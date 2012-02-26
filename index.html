@@ -1,0 +1,67 @@
+<!doctype html>
+<html>
+<head>
+  <title>Touch Event test page</title>
+  <style>
+    /* Page styling */
+    body {
+      background: linen;
+    }
+
+    body,
+    p {
+      margin: 0;
+      padding: 0;
+    }
+  </style>
+</head>
+<body>
+  <fieldset id="logArea">
+    <legend>Console</legend>
+  </fieldset>
+  <canvas id="testCanvas"></canvas>
+  <script>
+    (function () {
+      var logArea = document.getElementById('logArea');
+
+      // Custom log function
+      window.log = function () {
+        var args = [].slice.call(arguments),
+            i,
+            len,
+            p;
+
+        // Log messages to the page
+        for (i = 0, len = arguments.length; i < len; i++) {
+          p = document.createElement('p');
+          p.innerHTML = arguments[i];
+          logArea.appendChild(p);
+        }
+
+        // and log messages to the console
+        console && console.log && console.log.apply(console, args);
+      }
+    }());
+  </script>
+  <script>
+    (function () {
+      // Document test code
+      document.addEventListener('touchstart', log, false);
+      document.addEventListener('touchend', log, false);
+      document.addEventListener('touchmove', log, false);
+      document.addEventListener('touchenter', log, false);
+      document.addEventListener('touchleave', log, false);
+      document.addEventListener('touchcancel', log, false);
+
+      // Element specific test code
+      /* var testCanvas = document.getElementById('testCanvas');
+      el.addEventListener('touchstart', log, false);
+      el.addEventListener('touchend', log, false);
+      el.addEventListener('touchcancel', log, false);
+      el.addEventListener('touchleave', log, false);
+      el.addEventListener('touchmove', log, false); */
+    }());
+  </script>
+  <script src="mock.js"></script>
+</body>
+</html>
