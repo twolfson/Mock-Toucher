@@ -2,8 +2,17 @@
   var touchId = 0,
       mice = {};
   function Touch(mouseEvent) {
+    // Grab the current id
     var id = touchId;
     this.identifier = id;
+
+    // Update the touch's details with the mouseEvent
+    this.update(mouseEvent);
+
+    // Mouse clicks are very tiny and mono-directional so set up default radii and angle
+    this.changeRadius(1, 1);
+    this.changeAngle(0);
+    this.changeForce(1);
 
     // Save this to the class' hash
     mice[id] = this;
@@ -16,7 +25,27 @@
    * TODO: Complete
    */
   Touch.moveTouch = function (id, mouseEvent) {
-
+    mice[id].update(mouseEvent);
+  };
+  Touch.prototype = {
+    'update': function (mouseEvent) {
+      this.screenX = mouseEvent.screenX;
+      this.screenY = mouseEvent.screenY;
+      this.clientX = mouseEvent.clientX;
+      this.clientY = mouseEvent.clientY;
+      this.pageX = mouseEvent.pageX;
+      this.pageY = mouseEvent.pageY;
+    },
+    'changeRadius': function (radiusX, radiusY) {
+      this.radiusX = radiusX;
+      this.radiusy = radiusY;
+    },
+    'changeAngle': function (rotAngle) {
+      this.rotationAngle = rotAngle;
+    },
+    'changeForce': function (force) {
+      this.force = force;
+    }
   };
 
   /**
@@ -185,53 +214,44 @@
     }
   };
 
-  document.addEventListener('mousedown', function (e) {
-    var touchEvent = new TouchEvent();
-    touchEvent.addMouse(e);
-    console.log(e);
+  
+  // document.addEventListener('mousedown', function (e) {
+  // Currently testing on http://paulirish.com/demo/multi
+  document.getElementById('example').addEventListener('mousedown', function (e) {
+    var elt = this,
+        touchEvent = new TouchEvent(),
+        mouseId = touchEvent.addMouse(e);
 
-    document.dispatchEvent(touchEvent.event);
+    elt.dispatchEvent(touchEvent.event);
+
+    // Set up event functions for binding and removal
+    function mouseMove(e) {
+      touchEvent.changeType('touchmove');
+      Touch.moveTouch(mouseId, e);
+      elt.dispatchEvent(touchEvent.event);
+    }
+
+    function mouseUp(e) {
+      touchEvent.changeType('touchend');
+      Touch.moveTouch(mouseId, e);
+      elt.dispatchEvent(touchEvent.event);
+
+      // Remove the event listeners
+      elt.removeEventListener('mousemove', mouseMove, false);
+      elt.removeEventListener('mouseup', mouseUp, false);
+    }
+
+    // Add the motion and end event listeners
+    elt.addEventListener('mousemove', mouseMove, false);
+    elt.addEventListener('mouseup', mouseUp, false);
   });
 
-  // document.addEventListener('mousemove', function (e) {
-  //   var f = new TouchEvent('touchmove', e);
-  //   document.dispatchEvent(f);
-  // });
 
-  // document.addEventListener('mouseup', function (e) {
-    // var f = new TouchEvent('touchend', e);
-    // document.dispatchEvent(f);
-  // });
 
   // TODO: Mouse enter, leave, cancel
 }());
 
-/** Touch Event spec **/
-// TouchEvent.changedTouches
-    // A TouchList of all the Touch objects representing individual points of contact whose states changed between the previous touch event and this one. Read only.
-// TouchEvent.targetTouches
-    // A TouchList of all the Touch  objects that are both currently in contact with the touch surface and were also started on the same element that is the target of the event. Read only.
-// TouchEvent.touches
-    // A TouchList of all the Touch  objects representing all current points of contact with the surface, regardless of target or changed status. Read only.
-
-/** Touch spec **/    
-// Touch.screenX
-    // The X coordinate of the touch point relative to the screen, not including any scroll offset. Read only.
-// Touch.screenY
-    // The Y coordinate of the touch point relative to the screen, not including any scroll offset. Read only.
-// Touch.clientX
-    // The X coordinate of the touch point relative to the viewport, not including any scroll offset. Read only.
-// Touch.clientY
-    // The Y coordinate of the touch point relative to the viewport, not including any scroll offset. Read only.
-// Touch.pageX
-    // The X coordinate of the touch point relative to the viewport, including any scroll offset. Read only.
-// Touch.pageY
-    // The Y coordinate of the touch point relative to the viewport, including any scroll offset. Read only.
-// Touch.radiusX
-    // The X radius of the ellipse that most closely circumscribes the area of contact with the screen. The value is in pixels of the same scale as screenX. Read only.
-// Touch.radiusY
-    // The Y radius of the ellipse that most closely circumscribes the area of contact with the screen. The value is in pixels of the same scale as screenY. Read only.
-// Touch.rotationAngle
-    // The angle (in degrees) that the ellipse described by radiusX and radiusY must be rotated, clockwise, to most accurately cover the area of contact between the user and the surface. Read only.
-// Touch.force
-    // The amount of pressure being applied to the surface by the user, as a float between 0.0 (no pressure) and 1.0 (maximum pressure). Read only.
+// We are designing for one mouse that can be multiplexed
+// This means we have one mouse as the center of all actions
+// We will use things like shift to add new clicks and ctrl to remove them
+// Alt will be for editing a click - e.g. radius (maybe via a popup slider)
