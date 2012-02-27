@@ -279,7 +279,7 @@
           diffY = mouseEvent.pageY - lastMousePosition.y;
 
       // Move all cursors relative to the change in the mouseTouch
-      this.eachTouch(function (touch) {
+      this.eachTouch(function (touch, isMouseTouch) {
         touch.moveRel(diffX, diffY);
       });
 
@@ -298,6 +298,7 @@
           i = 0,
           len = clicks.length,
           click;
+
       for (; i < len; i++) {
         click = clicks[i];
         fn.call(click, click, false);
@@ -329,9 +330,23 @@
       // Fluent interface
       return this;
     },
-    'addTouch': function (touch) {
-      this.pseudoClicks.push(touch);
+    'addTouch': function (touch, saveAsMouseTouch) {
+      // Save the pseudo click as the touch
+      var pseudoClick = touch;
+
+      // If we are to overwrite the mouse touch, do so
+      if (saveAsMouseTouch === true) {
+        pseudoClick = this.mouseTouch;
+        this.mouseTouch = touch;
+      }
+
+      // Save the pseudo click as a pseudo click
+      this.pseudoClicks.push(pseudoClick);
+
+      // Add the click to our touch list
       this.touchList.add(touch);
+
+      // Fluent interface
       return this;
     },
     'start': function (mouseEvent) {
@@ -450,7 +465,7 @@
         // When the mouse is clicked
             shiftMouseClick = function (e) {
               // Add the touch to the collection
-              touchCollection.addTouch(touch);
+              touchCollection.addTouch(touch, true);
 
               // and create a new touch
               touch = new Touch();
