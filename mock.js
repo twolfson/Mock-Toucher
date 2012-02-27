@@ -367,18 +367,40 @@
   // TODO: Mouse enter, leave, cancel
   // TODO: Movement of a mouse should be handled by TouchCollection to update the proper pieces accordingly
   // TODO: Element selector panel -- allow for CSS query or visual binding (abs position overlay)
+  // TODO: Selector panel should have checkbox for 'show circles' which adds display: none
   document.onkeydown = function (e) {
     // Shift = 16, Ctrl = 17;
-    console.log(e.keyCode);
+    var keyCode = e.keyCode;
+    // If either shift or ctrl is pressed
+    if (keyCode === 16 || keyCode === 17) {
+      // If the mouse is currently pressed down
+      if (mouseMove !== noop) {
+        // TODO: Listen for any mouse movements and move the mouseTouch
+          // When the mouse is lifted, start acting normally (see else)
+      } else {
+        // If shift is pressed
+        if (keyCode === 16) {
+        // Create a new touch
+        
+        // and move it to the current cursor location
+        
+        // When the mouse is moved
+          // Move the new touch as well
+        // When the mouse is pressed
+          // Add the touch to the collection
+          // and create a new touch
+        } else {
+        // Otherwise, make all of the touches clickable
+          // When a touch is clicked on
+          // Remove it from the collection
+        }
+      }
+    }
+    
+    // When ctrl and/or shift is released
+      // If the mouse is pressed down
+        // If we did not start with the mouse pressed down, trigger a mouse start
+        // Trigger a mouse move
+      // Otherwise, hide the cursors
   };
 }());
-
-// We are designing for one mouse that can be multiplexed
-// This means we have one mouse as the center of all actions
-// We will use things like shift to add new clicks and ctrl to remove them
-// Alt will be for editing a click - e.g. radius (maybe via a popup slider)
-
-// When the mouse is clicked, all cursors should appear and drag with the content
-// When shift is pressed, all cursors should appear (relative to the mouse position) and stay fixed in place as long as shift is held
-// Any mouseup's during shift will add a new cursor at that location (this is to allow for hot-resumes)
-// Ctrl will have the same effect but for subtraction (this will require removing pointer events)
