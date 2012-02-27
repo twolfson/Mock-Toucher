@@ -16,8 +16,8 @@
     'height': 50,
     'halfWidth': 25,
     'halfHeight': 25,
-    'lastPositionX': -100,
-    'lastPositionY': -100,
+    'lastPositionX': 0,
+    'lastPositionY': 0,
     'moveTo': function (x, y) {
       var circle = this.circle,
           circleStyle = circle.style,
@@ -69,7 +69,25 @@
     mice[id].update(mouseEvent);
   };
   Touch.prototype = {
-    'moveTo': function (mouseEvent) {
+    'screenX': 0,
+    'screenY': 0,
+    'clientX': 0,
+    'clientY': 0,
+    'pageX': 0,
+    'pageY': 0,
+    'getLastPosition': function () {
+      return {'x': this.pageX, 'y': this.pageY};
+    },
+    'moveRel': function (relX, relY) {
+      this.screenX += relX;
+      this.screenY += relY;
+      this.clientX += relX;
+      this.clientY += relY;
+      var x = this.pageX = this.pageX + relX,
+          y = this.pageY = this.pageY + relY;
+      this.circle.moveTo(x, y);
+    },
+    'moveToEvent': function (mouseEvent) {
       this.screenX = mouseEvent.screenX || 0;
       this.screenY = mouseEvent.screenY || 0;
       this.clientX = mouseEvent.clientX || 0;
@@ -255,9 +273,14 @@
       this.event = event;
 
       // Update the mouse location
+      var mouseTouch = this.mouseTouch,
+          lastMousePosition = mouseTouch.getLastPosition(),
+          diffX = mouseEvent.pageX - lastMousePosition.x,
+          diffY = mouseEvent.pageY - lastMousePosition.y;
+
+      // Move all cursors relative to the change in the mouseTouch
       this.eachTouch(function (touch) {
-        // TODO: Move all relatively
-        touch.moveTo(mouseEvent);
+        touch.moveRel(diffX, diffY);
       });
 
       // Return this for a fluent interface
@@ -422,13 +445,13 @@
         // When the mouse is moved
         var shiftMouseMove = function (e) {
               // Move the new touch as well
-              touch.moveTo(e);
+              touch.moveToEvent(e);
             },
         // When the mouse is clicked
             shiftMouseClick = function (e) {
               // Add the touch to the collection
               touchCollection.addTouch(touch);
-              
+
               // and create a new touch
               touch = new Touch();
             };
