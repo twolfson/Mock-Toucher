@@ -27,7 +27,7 @@
       circleStyle.left = x - this.halfHeight + 'px';
     },
     'enableClick': function () {
-      delete this.circle.style.pointerEvents;
+      this.circle.style.pointerEvents = '';
     },
     'disableClick': function () {
       this.circle.style.pointerEvents = 'none';
@@ -47,7 +47,17 @@
     },
     'moveToLastPosition': function () {
       this.moveTo(this.lastPositionX, this.lastPositionY);
-    }
+    },
+    'addEventListener': function () {
+      var args = [].slice.call(arguments),
+          circle = this.circle;
+      circle.addEventListener.apply(circle, args);
+    },
+    'removeEventListener': function () {
+      var args = [].slice.call(arguments),
+          circle = this.circle;
+      circle.removeEventListener.apply(circle, args);
+    },
   };
 
   var touchId = 0,
@@ -306,7 +316,7 @@
       var mouseTouch = this.mouseTouch;
 
       // If there is no previous mouseTouch (e.g. it has been deleted or this is a fresh collection)
-      if (mouseTouch === undefined) {
+      if (!mouseTouch) {
         // Set up the mouse for this event
         var touch = new Touch();
 
@@ -349,7 +359,7 @@
 
       // and once for the mouse touch
       click = this.mouseTouch;
-      if (click !== undefined) {
+      if (click) {
         fn.call(click, click, true);
       }
 
@@ -386,12 +396,40 @@
       }
 
       // Save the pseudo click as a pseudo click
-      if (pseudoClick !== undefined) {
+      if (pseudoClick) {
         this.pseudoClicks.push(pseudoClick);
       }
 
       // Add the click to our touch list
       this.touchList.add(touch);
+
+      // Fluent interface
+      return this;
+    },
+    'removeTouch': function (touch) {
+      var clicks = this.pseudoClicks,
+          i,
+          len;
+      
+      // If we are erasing the mouse touch
+      if (touch === this.mouseTouch) {
+        // Fallback on the last pseudoClick (this may be null)
+        this.mouseTouch = clicks.pop();
+      } else {
+      // Otherwise, remove the item from the pseudoClicks
+        for (i = 0, len = clicks.length; i < len; i++) {
+          if (clicks[i] === touch) {
+            clicks.splice(i, 1);
+            break;
+          }
+        }
+      }
+
+      // Remove the item from the touchList
+      this.touchList.remove(touch);
+
+      // Delete the touch
+      touch.delete();
 
       // Fluent interface
       return this;
@@ -496,13 +534,13 @@
       // Unbind mousedown handler
       elt.removeEventListener('mousedown', mouseDown, false);
 
+      // Show current touch collection
+      touchCollection.moveToLastPosition();
+
       // If shift is pressed
       if (shiftKey === true) {
         // Create a touch stub variable
         var touch;
-
-        // Show current touch collection
-        touchCollection.moveToLastPosition();
 
         // When the mouse is moved
         var shiftMouseMove = function (e) {
@@ -545,9 +583,6 @@
             if (touch) {
               touch.delete();
             }
-
-            // Hide the cursors
-            touchCollection.hideAll();
           }
         }
 
@@ -555,14 +590,27 @@
         document.addEventListener('keyup', shiftKeyUp, false);
       } else {
       // Otherwise...
-      touchCollection.eachTouch(function (touch) {
-        // When a touch is clicked on
-          // Remove it from the collection
-          // TODO: There may be necessary debug logic for falling back the 'mouseTouch'
-      });
+        touchCollection.eachTouch(function (touch) {
+          // When a touch is clicked on
+          touch.addMouseEvent(function () {
+            // Remove it from the collection
+            // TODO: There may be necessary debug logic for falling back the 'mouseTouch'
+            touchCollection.removeTouch(touch);
+          });
+        });
 
-      // On release, stop listening to mouse events on the circles
+        // On ctrl key release
+        function ctrlKeyUp(e) {
+          if (e.ctrlKey === false) {
+            // Stop listening to mouse events on the touch collection
+            touchCollection.eachTouch(function (touch) {
+              touch.clearMouseEvents();
+            });
 
+            // Remove the key up handler
+            document.removeEventListener('keyup', ctrlKeyUp, false);
+          }
+        }
       }
     }
 
@@ -577,6 +625,9 @@
 
         // Unbind this handler
         document.removeEventListener('keyup', keyUp, false);
+
+        // Hide the cursors
+        touchCollection.hideAll();
       }
     }
 
