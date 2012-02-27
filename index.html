@@ -12,7 +12,7 @@
       margin: 0;
       padding: 0;
     }
-    
+
     canvas {
       background: white;
       border: 1px solid black;
@@ -42,13 +42,34 @@
         return url.slice(0, url.indexOf('/'));
       }
     }
-    
+
     // Get mock toucher location
     var mockSrc = basePath(location + '').replace(/http(s)?:/i, '') + 'mock.js',
         mockToucherLink = document.getElementById('mockToucherLink');
-    
+
     // Set up the mockToucherLink href
     mockToucherLink.setAttribute('href', 'javascript:(function(){var d=document,s=d.createElement("script"),t=document.getElementsByTagName("script")[0];s.async=true,s.src="' + mockSrc + '";t.parentNode.insertBefore(s,t);}());void 0;');
+
+    // Prevent multiple opens
+    var openedBefore = false;
+    mockToucherLink.onclick = function (e) {
+      // If the link has been opened before
+      if (openedBefore === true) {
+        // Stop it from happening again
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // Open the overlay (late binding due to async nature)
+        var overlayHidden = document.getElementById('MOCKTOUCHERoverlayHidden');
+        if (overlayHidden) {
+          overlayHidden.onclick();
+        }
+        return;
+      }
+
+      // Save openedBefore state
+      openedBefore = true;
+    };
   </script>
   <canvas width="922" height="450" id="example"></canvas>
   <script>

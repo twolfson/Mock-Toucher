@@ -651,6 +651,8 @@
       overlayHidden = document.createElement('div'),
       overlayStyle = 'position: absolute; top: 20px; left: 0; background: linen; border: 1px solid purple; border-left: 0; padding: 5px; overflow: hidden;',
       lastMocker;
+  overlay.id = 'MOCKTOUCHERoverlay';
+  overlayHidden.id = 'MOCKTOUCHERoverlayHidden';
   overlay.setAttribute('style', overlayStyle);
   overlayHidden.setAttribute('style', overlayStyle + '; display: none; background: limegreen; color: purple; cursor: pointer; padding: 0; font-size: .5em;');
   overlay.innerHTML = ['<div style="text-align: center; color: purple;"><strong>Mock Toucher</strong> by <a href="mailto:todd@twolfson.com">Todd Wolfson</a></div>',
