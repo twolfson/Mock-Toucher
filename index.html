@@ -1,15 +1,14 @@
 <!doctype html>
 <html>
 <head>
-  <title>Touch Event test page</title>
+  <title>Mock Toucher Demo Page</title>
   <style>
     /* Page styling */
     body {
       background: linen;
     }
 
-    body,
-    p {
+    body {
       margin: 0;
       padding: 0;
     }
@@ -21,13 +20,36 @@
   </style>
 </head>
 <body>
+  <h1>
+    Mock Toucher Demo Page
+  </h1>
   <p>
-    Inspired by Remy Sharp's Remote Tilt <a href="http://remote-tilt.com/">http://remote-tilt.com/</a>
+    This page is a demonstration of the Mock Toucher bookmarklet. Below is a canvas that supports multi touch input but was not built to support mouse events.
     <br/>
-    Attribution to <a href="http://tbranyen.com/">Tim Branyen</a>, <a href="http://miketaylr.com">Mike Taylr</a>,  <a href="http://paulirish.com/">Paul Irish</a> &amp; <a href="//smus.com">Boris Smus</a> for multitouch canvas.
+    Using the Mock Toucher bookmarklet, mouse events are double fired as touch events on the selected element.
     <br/>
-    <a href="http://paulirish.com/demo/multi">http://paulirish.com/demo/multi</a>
+    Touches can be created by holding the <u>Shift</u> key and clicking where additional touch points should go. Similarly, touches can be removed via the <u>Ctrl</u> key and clicking on the touch point to remove.
+    <br/>
+    To begin Mock Toucher, click the link below. Feel free to bookmark it as well as it as a bookmarklet.
+    <h3><a id="mockToucherLink" href="">Mock Toucher</a></h3>
   </p>
+  <script>
+    function basePath(url) {
+      var slashIndex;
+      if (url.charAt(url.length - 1) === '/') {
+        return url;
+      } else {
+        return url.slice(0, url.indexOf('/'));
+      }
+    }
+    
+    // Get mock toucher location
+    var mockSrc = basePath(location + '').replace(/http(s)?:/i, '') + 'mock.js',
+        mockToucherLink = document.getElementById('mockToucherLink');
+    
+    // Set up the mockToucherLink href
+    mockToucherLink.setAttribute('href', 'javascript:(function(){var d=document,s=d.createElement("script"),t=document.getElementsByTagName("script")[0];s.async=true,s.src="' + mockSrc + '";t.parentNode.insertBefore(s,t);}());void 0;');
+  </script>
   <canvas width="922" height="450" id="example"></canvas>
   <script>
     // Comments and code taken from http://paulirish.com/demo/multi
@@ -145,6 +167,12 @@
     var super_awesome_multitouch_drawing_canvas_thingy = new CanvasDrawr({id:"example", size: 5 });
     }());
   </script>
-  <script src="mock.js"></script>
+  <p>
+    Inspired by Remy Sharp's Remote Tilt <a href="http://remote-tilt.com/">http://remote-tilt.com/</a>
+    <br/>
+    Attribution to <a href="http://tbranyen.com/">Tim Branyen</a>, <a href="http://miketaylr.com">Mike Taylr</a>,  <a href="http://paulirish.com/">Paul Irish</a> &amp; <a href="//smus.com">Boris Smus</a> for multitouch canvas.
+    <br/>
+    <a href="http://paulirish.com/demo/multi">http://paulirish.com/demo/multi</a>
+  </p>
 </body>
 </html>

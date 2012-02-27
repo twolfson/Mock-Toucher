@@ -653,18 +653,18 @@
       lastMocker;
   overlay.setAttribute('style', overlayStyle);
   overlayHidden.setAttribute('style', overlayStyle + '; display: none; background: limegreen; color: purple; cursor: pointer; padding: 0; font-size: .5em;');
-  overlay.innerHTML = ['<div style="text-align: center; color: purple;"><strong>Mock Toucher</strong></div>',
+  overlay.innerHTML = ['<div style="text-align: center; color: purple;"><strong>Mock Toucher</strong> by <a href="mailto:todd@twolfson.com">Todd Wolfson</a></div>',
     '<div>&nbsp;</div>',
     '<div>',
-      '<label for="MOCKTOUCHERcssSelector">CSS Selector: </label>',
+      '<label for="MOCKTOUCHERcssSelector">Mock Touches on: </label>',
       '<input type="text" id="MOCKTOUCHERcssSelector" name="MOCKTOUCHERcssSelector" value="canvas"/>',
     '</div>',
-    '<div>Only applies to first element</div>',
-    '<div>&nbsp;</div>',
-    '<div>',
-      '<label for="MOCKTOUCHERshowCircles">Show circles: </label>',
-      '<input type="checkbox" id="MOCKTOUCHERshowCircles" name="MOCKTOUCHERshowCircles" selected="selected"/>',
-    '</div>',
+    '<div>CSS query selects only the first element.</div>',
+    // '<div>&nbsp;</div>',
+    // '<div>',
+      // '<label for="MOCKTOUCHERshowCircles">Show circles: </label>',
+      // '<input type="checkbox" id="MOCKTOUCHERshowCircles" name="MOCKTOUCHERshowCircles" checked="checked"/>',
+    // '</div>',
     '<div>&nbsp;</div>',
     '<div style="text-align: center"><span id="MOCKTOUCHERhideText" style="color: red; text-decoration: underline; cursor: pointer;">Hide Panel</span></div>'].join('');
   overlayHidden.innerHTML = '&raquo;';
@@ -674,7 +674,7 @@
   
   // Bindings for overlay
   var cssSelector = document.getElementById('MOCKTOUCHERcssSelector'),
-      showCircles = document.getElementById('MOCKTOUCHERshowCircles'),
+      // showCircles = document.getElementById('MOCKTOUCHERshowCircles'),
       hideText = document.getElementById('MOCKTOUCHERhideText');
       
   function ex(fn) {
@@ -706,9 +706,9 @@
     }
   });
   
-  // TODO: Show circles logic
-  showCircles.onchange = function () {
-  };
+  // // Show circles logic
+  // showCircles.onclick = function () {
+  // };
   
   // Hide logic
   hideText.onclick = function () {
@@ -723,4 +723,3 @@
 
 // TODO: Mouse enter, leave, cancel
 // TODO: Selector panel should have checkbox for 'show circles' which adds display: none
-// TODO: Convert into bookmarklet
