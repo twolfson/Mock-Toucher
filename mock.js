@@ -1,11 +1,11 @@
 (function () {
   // Set up mouse circle style and constructor
-  mouseCircleStyle = [
-    "position: absolute; top: -100px; left: -100px",
-    "width: 50px; height: 50px",
-    "border-radius: 50%; -webkit-border-radius: 50%; -moz-border-radius: 50%",
-    "background: red; opacity: 0.5",
-    "pointer-events: none"].join('; ');
+  var mouseCircleStyle = [
+        "position: absolute; top: -100px; left: -100px",
+        "width: 50px; height: 50px",
+        "border-radius: 50%; -webkit-border-radius: 50%; -moz-border-radius: 50%",
+        "background: red; opacity: 0.5",
+        "pointer-events: none"].join('; ');
   function MouseCircle() {
     var circle = this.circle = document.createElement('div');
     circle.setAttribute('style', mouseCircleStyle);
@@ -26,6 +26,12 @@
       circleStyle.top = y - this.halfWidth + 'px';
       circleStyle.left = x - this.halfHeight + 'px';
     },
+    'enableClick': function () {
+      delete this.circle.style.pointerEvents;
+    },
+    'disableClick': function () {
+      this.circle.style.pointerEvents = 'none';
+    },
     'hide': function () {
       var circle = this.circle,
           circleStyle = circle.style;
@@ -33,7 +39,10 @@
       circleStyle.left = '-100px';
     },
     'delete': function () {
+      // Remove the circle from the DOM
       document.body.removeChild(this.circle);
+
+      // Delete the internal circle
       delete this.circle;
     },
     'moveToLastPosition': function () {
@@ -55,6 +64,9 @@
     this.changeRadius(1, 1);
     this.changeAngle(0);
     this.changeForce(1);
+
+    // Create mouse event store
+    this.mouseEvents = [];
 
     // Save this to the class' hash
     mice[id] = this;
@@ -118,6 +130,33 @@
 
       // and delete the mouse circle
       this.circle.delete();
+    },
+    'addMouseEvent': function (fn) {
+      // Save the function to cache
+      this.mouseEvents.push(fn);
+
+      // Enable clicking on the circle
+      this.circle.enableClick();
+
+      // Add the event listener
+      this.circle.addEventListener('click', fn, false);
+    },
+    'clearMouseEvents': function () {
+      // Remove all event listeners
+      var circle = this.circle,
+          mouseEvents = this.mouseEvents,
+          i = 0,
+          len = mouseEvents.length,
+          fn;
+      for (; i < len; i++) {
+        fn = mouseEvents[i];
+        circle.removeEventListener('click', fn, false);
+      }
+      // Clear out the cache
+      this.mouseEvents = [];
+
+      // Disable click
+      this.circle.disableClick();
     }
   };
 
@@ -235,15 +274,6 @@
     // Generate a TouchList for this event
     this.touchList = new TouchList();
 
-    // Set up the mouse for this event
-    var touch = new Touch();
-
-    // Add the touch to this touchlist
-    this.touchList.add(touch);
-
-    // Save the mouse touch
-    this.mouseTouch = touch;
-
     // Set up linked clicks
     this.pseudoClicks = [];
   }
@@ -273,8 +303,21 @@
       this.event = event;
 
       // Update the mouse location
-      var mouseTouch = this.mouseTouch,
-          lastMousePosition = mouseTouch.getLastPosition(),
+      var mouseTouch = this.mouseTouch;
+
+      // If there is no previous mouseTouch (e.g. it has been deleted or this is a fresh collection)
+      if (mouseTouch === undefined) {
+        // Set up the mouse for this event
+        var touch = new Touch();
+
+        // Add the touch to this touchlist
+        this.touchList.add(touch);
+
+        // Save the mouse touch
+        mouseTouch = this.mouseTouch = touch;
+      }
+
+      var lastMousePosition = mouseTouch.getLastPosition(),
           diffX = mouseEvent.pageX - lastMousePosition.x,
           diffY = mouseEvent.pageY - lastMousePosition.y;
 
@@ -306,7 +349,9 @@
 
       // and once for the mouse touch
       click = this.mouseTouch;
-      fn.call(click, click, true);
+      if (click !== undefined) {
+        fn.call(click, click, true);
+      }
 
       // Fluent interface
       return this;
@@ -341,7 +386,9 @@
       }
 
       // Save the pseudo click as a pseudo click
-      this.pseudoClicks.push(pseudoClick);
+      if (pseudoClick !== undefined) {
+        this.pseudoClicks.push(pseudoClick);
+      }
 
       // Add the click to our touch list
       this.touchList.add(touch);
@@ -451,24 +498,31 @@
 
       // If shift is pressed
       if (shiftKey === true) {
-        // Create a new touch
-        var touch = new Touch();
+        // Create a touch stub variable
+        var touch;
 
         // Show current touch collection
         touchCollection.moveToLastPosition();
 
         // When the mouse is moved
         var shiftMouseMove = function (e) {
+              // If there is no touch, create one
+              if (!touch) {
+                touch = new Touch();
+              }
+
               // Move the new touch as well
               touch.moveToEvent(e);
             },
         // When the mouse is clicked
             shiftMouseClick = function (e) {
-              // Add the touch to the collection
-              touchCollection.addTouch(touch, true);
+              if (touch) {
+                // Add the touch to the collection
+                touchCollection.addTouch(touch, true);
 
-              // and create a new touch
-              touch = new Touch();
+                // and break memory connection to the touch
+                touch = null;
+              }
             };
 
         // Bind the previous functions appropriately
@@ -488,7 +542,9 @@
             document.removeEventListener('keyup', shiftKeyUp, false);
 
             // Delete the touch
-            touch.delete();
+            if (touch) {
+              touch.delete();
+            }
 
             // Hide the cursors
             touchCollection.hideAll();
@@ -498,9 +554,15 @@
         // Set up the key release binding
         document.addEventListener('keyup', shiftKeyUp, false);
       } else {
-      // Otherwise, make all of the touches clickable
+      // Otherwise...
+      touchCollection.eachTouch(function (touch) {
         // When a touch is clicked on
-        // Remove it from the collection
+          // Remove it from the collection
+          // TODO: There may be necessary debug logic for falling back the 'mouseTouch'
+      });
+
+      // On release, stop listening to mouse events on the circles
+
       }
     }
 
