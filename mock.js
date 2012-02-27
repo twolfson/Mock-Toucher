@@ -1,55 +1,4 @@
 (function () {
-  var touchId = 0,
-      mice = {};
-  function Touch(mouseEvent) {
-    // Fallback mouseEvent
-    mouseEvent = mouseEvent || {};
-
-    // Grab the current id
-    var id = touchId;
-    this.identifier = id;
-
-    // Update the touch's details with the mouseEvent
-    this.update(mouseEvent);
-
-    // Mouse clicks are very tiny and mono-directional so set up default radii and angle
-    this.changeRadius(1, 1);
-    this.changeAngle(0);
-    this.changeForce(1);
-
-    // Save this to the class' hash
-    mice[id] = this;
-
-    // Increment the touchId
-    touchId += 1;
-  }
-  /**
-   * Static class method to update a mouse action
-   */
-  Touch.moveTouch = function (id, mouseEvent) {
-    mice[id].update(mouseEvent);
-  };
-  Touch.prototype = {
-    'update': function (mouseEvent) {
-      this.screenX = mouseEvent.screenX || 0;
-      this.screenY = mouseEvent.screenY || 0;
-      this.clientX = mouseEvent.clientX || 0;
-      this.clientY = mouseEvent.clientY || 0;
-      this.pageX = mouseEvent.pageX || 0;
-      this.pageY = mouseEvent.pageY || 0;
-    },
-    'changeRadius': function (radiusX, radiusY) {
-      this.radiusX = radiusX;
-      this.radiusy = radiusY;
-    },
-    'changeAngle': function (rotAngle) {
-      this.rotationAngle = rotAngle;
-    },
-    'changeForce': function (force) {
-      this.force = force;
-    }
-  };
-
   // Set up mouse circle style and constructor
   mouseCircleStyle = [
     "position: absolute; top: -100px; left: -100px",
@@ -82,6 +31,61 @@
     'delete': function () {
       document.body.removeChild(this.circle);
       delete this.circle;
+    }
+  };
+
+  var touchId = 0,
+      mice = {};
+  function Touch(mouseEvent) {
+    // Fallback mouseEvent
+    mouseEvent = mouseEvent || {};
+
+    // Grab the current id
+    var id = touchId;
+    this.identifier = id;
+    
+    // Create a circle for the item
+    this.circle = new MouseCircle();
+
+    // Mouse clicks are very tiny and mono-directional so set up default radii and angle
+    this.changeRadius(1, 1);
+    this.changeAngle(0);
+    this.changeForce(1);
+
+    // Save this to the class' hash
+    mice[id] = this;
+
+    // Increment the touchId
+    touchId += 1;
+  }
+  /**
+   * Static class method to update a mouse action
+   */
+  Touch.moveTouch = function (id, mouseEvent) {
+    mice[id].update(mouseEvent);
+  };
+  Touch.prototype = {
+    'moveTo': function (mouseEvent) {
+      this.screenX = mouseEvent.screenX || 0;
+      this.screenY = mouseEvent.screenY || 0;
+      this.clientX = mouseEvent.clientX || 0;
+      this.clientY = mouseEvent.clientY || 0;
+      var x = this.pageX = mouseEvent.pageX || 0,
+          y = this.pageY = mouseEvent.pageY || 0;
+      this.circle.moveTo(x, y);
+    },
+    'changeRadius': function (radiusX, radiusY) {
+      this.radiusX = radiusX;
+      this.radiusy = radiusY;
+    },
+    'changeAngle': function (rotAngle) {
+      this.rotationAngle = rotAngle;
+    },
+    'changeForce': function (force) {
+      this.force = force;
+    },
+    'hide': function () {
+      this.circle.hide();
     }
   };
 
@@ -205,8 +209,11 @@
     // Add the touch to this touchlist
     this.touchList.add(touch);
 
-    // Save the mouse identifer
-    this.mouseId = touch.identifier;
+    // Save the mouse touch
+    this.mouseTouch = touch;
+
+    // Set up linked clicks
+    this.pseudoClicks = [];
   }
   TouchCollection.prototype = {
     'eventType': 'touchstart',
@@ -233,8 +240,8 @@
       // Save the event to this
       this.event = event;
 
-      // Update the mouse circle location
-      Touch.moveTouch(this.mouseId, mouseEvent);
+      // Update the mouse location
+      this.mouseTouch.moveTo(mouseEvent);
       // TODO: Move all relatively
 
       // Return this for a fluent interface
@@ -245,11 +252,37 @@
       this.eventType = eventType;
       return this;
     },
+    // Sugar function that applies a function to each touch. It is given (touch, isMouseTouch)
+    'eachTouch': function (fn) {
+      // Call function for each pseudo click
+      var clicks = this.pseudoClicks,
+          i = 0,
+          len = clicks.length,
+          click;
+      for (; i < len; i++) {
+        click = clicks[i];
+        fn.call(click, click, false);
+      }
+
+      // and once for the mouse touch
+      click = this.mouseTouch;
+      fn.call(click, click, true);
+
+      // Fluent interface
+      return this;
+    },
+    'hideAll': function () {
+      // Hide all the mouse circles
+      this.eachTouch(function (touch) {
+        touch.hide();
+      });
+
+      // Fluent interface
+      return this;
+    },
     'start': function (mouseEvent) {
       // Change the event type
       this.changeType('touchstart');
-
-      // TODO: Show all circles (method showAll)
 
       // Update this event
       this.update(mouseEvent);
@@ -274,7 +307,8 @@
       // Update this event
       this.update(mouseEvent);
 
-      // TODO: Hide all circles (method hideAll)
+      // Hide all circles
+      this.hideAll();
 
       // Fluent interface
       return this;
@@ -310,6 +344,7 @@
           // When the mouse is lifted, end the movement
           touchCollection.end(e);
 
+          // And dispatch the event
           elt.dispatchEvent(touchCollection.event);
 
           // Remove the event listeners
