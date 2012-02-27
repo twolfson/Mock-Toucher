@@ -410,7 +410,7 @@
       var clicks = this.pseudoClicks,
           i,
           len;
-      
+
       // If we are erasing the mouse touch
       if (touch === this.mouseTouch) {
         // Fallback on the last pseudoClick (this may be null)
@@ -469,174 +469,258 @@
     }
   };
 
-  // Generate our global touch collection
-  var touchCollection = new TouchCollection();
-
-  // document.addEventListener('mousedown', function (e) {
   function noop() {}
-  var elt = document.getElementById('example'),
-      mouseMove = noop,
-      mouseUp = noop,
-      mouseDown = function (e) {
-        // Start the mouse click
-        touchCollection.start(e);
-
-        // And dispatch the event
-        elt.dispatchEvent(touchCollection.event);
-
-        // For a touch move, enter, leave, etc to occur a touch must currently be happening
-        // Set up event functions for binding and removal
-        mouseMove = function (e) {
-          // When the mouse moves, move the collection
-          touchCollection.moveMouseTo(e);
-
-          // And dispatch the event
-          elt.dispatchEvent(touchCollection.event);
-        }
-
-        mouseUp = function (e) {
-          // When the mouse is lifted, end the movement
-          touchCollection.end(e);
+  function MockToucher(elt) {
+    // Generate our global touch collection
+    var touchCollection = new TouchCollection(),
+        mouseMove = noop,
+        mouseUp = noop,
+        mouseDown = function (e) {
+          // Start the mouse click
+          touchCollection.start(e);
 
           // And dispatch the event
           elt.dispatchEvent(touchCollection.event);
 
-          // Remove the event listeners
-          elt.removeEventListener('mousemove', mouseMove, false);
-          elt.removeEventListener('mouseup', mouseUp, false);
+          // For a touch move, enter, leave, etc to occur a touch must currently be happening
+          // Set up event functions for binding and removal
+          mouseMove = function (e) {
+            // When the mouse moves, move the collection
+            touchCollection.moveMouseTo(e);
 
-          // and prevent any accidental calls
-          mouseMove = noop;
-          mouseUp = noop;
-        }
+            // And dispatch the event
+            elt.dispatchEvent(touchCollection.event);
+          }
 
-        // Add the motion and end event listeners
-        elt.addEventListener('mousemove', mouseMove, false);
-        elt.addEventListener('mouseup', mouseUp, false);
-      };
+          mouseUp = function (e) {
+            // When the mouse is lifted, end the movement
+            touchCollection.end(e);
 
-  // Begin listening for mousedown actions on the select element
-  elt.addEventListener('mousedown', mouseDown, false);
+            // And dispatch the event
+            elt.dispatchEvent(touchCollection.event);
 
-  // TODO: Mouse enter, leave, cancel
-  // TODO: Movement of a mouse should be handled by TouchCollection to update the proper pieces accordingly
-  // TODO: Element selector panel -- allow for CSS query or visual binding (abs position overlay)
-  // TODO: Selector panel should have checkbox for 'show circles' which adds display: none
+            // Remove the event listeners
+            elt.removeEventListener('mousemove', mouseMove, false);
+            elt.removeEventListener('mouseup', mouseUp, false);
 
-  function keyDown(e) {
-    // If either shift or ctrl is pressed AND the mouse is not currently moving
-    var ctrlKey = e.ctrlKey,
-        shiftKey = e.shiftKey;
-    if (ctrlKey === true || shiftKey === true && mouseMove === noop) {
-      // Prevent any additional keydowns
-      document.removeEventListener('keydown', keyDown, false);
+            // and prevent any accidental calls
+            mouseMove = noop;
+            mouseUp = noop;
+          }
 
-      // Unbind mousedown handler
-      elt.removeEventListener('mousedown', mouseDown, false);
+          // Add the motion and end event listeners
+          elt.addEventListener('mousemove', mouseMove, false);
+          elt.addEventListener('mouseup', mouseUp, false);
+        };
 
-      // Show current touch collection
-      touchCollection.moveToLastPosition();
+    // Begin listening for mousedown actions on the select element
+    elt.addEventListener('mousedown', mouseDown, false);
 
-      // If shift is pressed
-      if (shiftKey === true) {
-        // Create a touch stub variable
-        var touch;
+    function keyDown(e) {
+      // If either shift or ctrl is pressed AND the mouse is not currently moving
+      var ctrlKey = e.ctrlKey,
+          shiftKey = e.shiftKey;
+      if (ctrlKey === true || shiftKey === true && mouseMove === noop) {
+        // Prevent any additional keydowns
+        document.removeEventListener('keydown', keyDown, false);
 
-        // When the mouse is moved
-        var shiftMouseMove = function (e) {
-              // If there is no touch, create one
-              if (!touch) {
-                touch = new Touch();
-              }
+        // Unbind mousedown handler
+        elt.removeEventListener('mousedown', mouseDown, false);
 
-              // Move the new touch as well
-              touch.moveToEvent(e);
-            },
-        // When the mouse is clicked
-            shiftMouseClick = function (e) {
+        // Show current touch collection
+        touchCollection.moveToLastPosition();
+
+        // If shift is pressed
+        if (shiftKey === true) {
+          // Create a touch stub variable
+          var touch;
+
+          // When the mouse is moved
+          var shiftMouseMove = function (e) {
+                // If there is no touch, create one
+                if (!touch) {
+                  touch = new Touch();
+                }
+
+                // Move the new touch as well
+                touch.moveToEvent(e);
+              },
+          // When the mouse is clicked
+              shiftMouseClick = function (e) {
+                if (touch) {
+                  // Add the touch to the collection
+                  touchCollection.addTouch(touch, true);
+
+                  // and break memory connection to the touch
+                  touch = null;
+                }
+              };
+
+          // Bind the previous functions appropriately
+          elt.addEventListener('mousemove', shiftMouseMove, false);
+          elt.addEventListener('click', shiftMouseClick, false);
+
+          // When the shift key is released
+          function shiftKeyUp(e) {
+            if (e.shiftKey === false) {
+              // Remove the mousemove handler
+              elt.removeEventListener('mousemove', shiftMouseMove, false);
+
+              // Remove the click handler
+              elt.removeEventListener('click', shiftMouseClick, false);
+
+              // Remove the key up handler
+              document.removeEventListener('keyup', shiftKeyUp, false);
+
+              // Delete the touch
               if (touch) {
-                // Add the touch to the collection
-                touchCollection.addTouch(touch, true);
-
-                // and break memory connection to the touch
-                touch = null;
+                touch.delete();
               }
-            };
-
-        // Bind the previous functions appropriately
-        elt.addEventListener('mousemove', shiftMouseMove, false);
-        elt.addEventListener('click', shiftMouseClick, false);
-
-        // When the shift key is released
-        function shiftKeyUp(e) {
-          if (e.shiftKey === false) {
-            // Remove the mousemove handler
-            elt.removeEventListener('mousemove', shiftMouseMove, false);
-
-            // Remove the click handler
-            elt.removeEventListener('click', shiftMouseClick, false);
-
-            // Remove the key up handler
-            document.removeEventListener('keyup', shiftKeyUp, false);
-
-            // Delete the touch
-            if (touch) {
-              touch.delete();
             }
           }
-        }
 
-        // Set up the key release binding
-        document.addEventListener('keyup', shiftKeyUp, false);
-      } else {
-      // Otherwise...
-        touchCollection.eachTouch(function (touch) {
-          // When a touch is clicked on
-          touch.addMouseEvent(function () {
-            // Remove it from the collection
-            touchCollection.removeTouch(touch);
-          });
-        });
-
-        // On ctrl key release
-        function ctrlKeyUp(e) {
-          if (e.ctrlKey === false) {
-            // Stop listening to mouse events on the touch collection
-            touchCollection.eachTouch(function (touch) {
-              touch.clearMouseEvents();
+          // Set up the key release binding
+          document.addEventListener('keyup', shiftKeyUp, false);
+        } else {
+        // Otherwise...
+          touchCollection.eachTouch(function (touch) {
+            // When a touch is clicked on
+            touch.addMouseEvent(function () {
+              // Remove it from the collection
+              touchCollection.removeTouch(touch);
             });
+          });
 
-            // Remove the key up handler
-            document.removeEventListener('keyup', ctrlKeyUp, false);
+          // On ctrl key release
+          function ctrlKeyUp(e) {
+            if (e.ctrlKey === false) {
+              // Stop listening to mouse events on the touch collection
+              touchCollection.eachTouch(function (touch) {
+                touch.clearMouseEvents();
+              });
+
+              // Remove the key up handler
+              document.removeEventListener('keyup', ctrlKeyUp, false);
+            }
           }
+
+          // Bind ctrl key listener
+          document.addEventListener('keyup', ctrlKeyUp, false);
         }
-        
-        // Bind ctrl key listener
-        document.addEventListener('keyup', ctrlKeyUp, false);
       }
+
+      // When ctrl and/or shift is released
+      function keyUp(e) {
+        if ((shiftKey === true && e.shiftKey === false) || (ctrlKey === true && e.ctrlKey === false)) {
+          // Rebind the keyDown handler
+          document.addEventListener('keydown', keyDown, false);
+
+          // Rebind the mousedown handler
+          elt.addEventListener('mousedown', mouseDown, false);
+
+          // Unbind this handler
+          document.removeEventListener('keyup', keyUp, false);
+
+          // Hide the cursors
+          touchCollection.hideAll();
+        }
+      }
+
+      // Bind the key release listener to the DOM
+      document.addEventListener('keyup', keyUp, false);
     }
 
-    // When ctrl and/or shift is released
-    function keyUp(e) {
-      if ((shiftKey === true && e.shiftKey === false) || (ctrlKey === true && e.ctrlKey === false)) {
-        // Rebind the keyDown handler
-        document.addEventListener('keydown', keyDown, false);
+    // Bind the key press listener to the DOM
+    document.addEventListener('keydown', keyDown, false);
 
-        // Rebind the mousedown handler
-        elt.addEventListener('mousedown', mouseDown, false);
-
-        // Unbind this handler
-        document.removeEventListener('keyup', keyUp, false);
-
-        // Hide the cursors
-        touchCollection.hideAll();
+    // Add a custom deletion function properties for deletion
+    this.delete = function () {
+      document.removeEventListener('keydown', keyDown, false);
+      elt.removeEventListener('mousedown', mouseDown, false);
+      if (mouseMove !== noop) {
+        elt.removeEventListener('mousemove', mouseMove, false);
+      }
+      if (mouseUp !== noop) {
+        elt.removeEventListener('mouseup', mouseUp, false);
       }
     }
+  };
 
-    // Bind the key release listener to the DOM
-    document.addEventListener('keyup', keyUp, false);
+  // Overlay business
+  var overlay = document.createElement('div'),
+      overlayHidden = document.createElement('div'),
+      overlayStyle = 'position: absolute; top: 20px; left: 0; background: linen; border: 1px solid purple; border-left: 0; padding: 5px; overflow: hidden;',
+      lastMocker;
+  overlay.setAttribute('style', overlayStyle);
+  overlayHidden.setAttribute('style', overlayStyle + '; display: none; background: limegreen; color: purple; cursor: pointer; padding: 0; font-size: .5em;');
+  overlay.innerHTML = ['<div style="text-align: center; color: purple;"><strong>Mock Toucher</strong></div>',
+    '<div>&nbsp;</div>',
+    '<div>',
+      '<label for="MOCKTOUCHERcssSelector">CSS Selector: </label>',
+      '<input type="text" id="MOCKTOUCHERcssSelector" name="MOCKTOUCHERcssSelector" value="canvas"/>',
+    '</div>',
+    '<div>Only applies to first element</div>',
+    '<div>&nbsp;</div>',
+    '<div>',
+      '<label for="MOCKTOUCHERshowCircles">Show circles: </label>',
+      '<input type="checkbox" id="MOCKTOUCHERshowCircles" name="MOCKTOUCHERshowCircles" selected="selected"/>',
+    '</div>',
+    '<div>&nbsp;</div>',
+    '<div style="text-align: center"><span id="MOCKTOUCHERhideText" style="color: red; text-decoration: underline; cursor: pointer;">Hide Panel</span></div>'].join('');
+  overlayHidden.innerHTML = '&raquo;';
+  // overlayHidden.innerHTML = '<div>M</div><div>O</div><div>C</div><div>K</div><div>&nbsp;</div><div>T</div><div>O</div><div>U</div><div>C</div><div>H</div><div>E</div><div>R</div>';
+  document.body.appendChild(overlay);
+  document.body.appendChild(overlayHidden);
+  
+  // Bindings for overlay
+  var cssSelector = document.getElementById('MOCKTOUCHERcssSelector'),
+      showCircles = document.getElementById('MOCKTOUCHERshowCircles'),
+      hideText = document.getElementById('MOCKTOUCHERhideText');
+      
+  function ex(fn) {
+    fn();
+    return fn;
   }
-
-  // Bind the key press listener to the DOM
-  document.addEventListener('keydown', keyDown, false)
+  
+  // When the CSS selector is changed
+  cssSelector.onchange = ex(function () {
+    // Get the query
+    var query = cssSelector.value,
+        elt;
+    
+    // Attempt to select the element
+    try {
+      elt = document.querySelector(query);
+    } catch (e) {}
+    
+    // If there was a last MockToucher, delete it
+    if (lastMocker) {
+      lastMocker.delete();
+      lastMocker = null;
+    }
+    
+    // If a new element has been found
+    if (elt) {
+      // Create and save the new MockToucher for it
+      lastMocker = new MockToucher(elt);
+    }
+  });
+  
+  // TODO: Show circles logic
+  showCircles.onchange = function () {
+  };
+  
+  // Hide logic
+  hideText.onclick = function () {
+    overlay.style.display = 'none';
+    overlayHidden.style.display = '';
+  };
+  overlayHidden.onclick = function () {
+    overlay.style.display = '';
+    overlayHidden.style.display = 'none';
+  };
 }());
+
+// TODO: Mouse enter, leave, cancel
+// TODO: Selector panel should have checkbox for 'show circles' which adds display: none
+// TODO: Convert into bookmarklet
