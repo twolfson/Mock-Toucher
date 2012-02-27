@@ -212,6 +212,41 @@
       return touch.identifier;
     }
   };
+  
+  // Set up mouse circle style and constructor
+  mouseCircleStyle = [
+    "position: absolute; top: -100px; left: -100px",
+    "width: 50px; height: 50px",
+    "border-radius: 50%; -webkit-border-radius: 50%; -moz-border-radius: 50%",
+    "background: red; opacity: 0.5",
+    "pointer-events: none"].join('; '); 
+  function MouseCircle() {
+    var circle = this.circle = document.createElement('div');
+    circle.setAttribute('style', mouseCircleStyle);
+    document.body.appendChild(circle);
+  }
+  MouseCircle.prototype = {
+    'width': 50,
+    'height': 50,
+    'halfWidth': 25,
+    'halfHeight': 25,
+    'moveTo': function (x, y) {
+      var circle = this.circle,
+          circleStyle = circle.style;
+      circleStyle.top = y - this.halfWidth + 'px';
+      circleStyle.left = x - this.halfHeight + 'px';
+    },
+    'hide': function () {
+      var circle = this.circle,
+          circleStyle = circle.style;
+      circleStyle.top = '-100px';
+      circleStyle.left = '-100px';
+    },
+    'delete': function () {
+      document.body.removeChild(this.circle);
+      delete this.circle;
+    }
+  };
 
   // document.addEventListener('mousedown', function (e) {
   document.getElementById('example').addEventListener('mousedown', function (e) {
@@ -220,6 +255,10 @@
         mouseId = touchEvent.addMouse(e);
 
     elt.dispatchEvent(touchEvent.event);
+    
+    // Draw a mouse circle
+    var circle = new MouseCircle();
+    circle.moveTo(e.pageX, e.pageY);
 
     // For a touch move, enter, leave, etc to occur a touch must currently be happening
     // Set up event functions for binding and removal
@@ -227,12 +266,15 @@
       touchEvent.changeType('touchmove');
       Touch.moveTouch(mouseId, e);
       elt.dispatchEvent(touchEvent.event);
+      circle.moveTo(e.pageX, e.pageY);
     }
 
     function mouseUp(e) {
       touchEvent.changeType('touchend');
       Touch.moveTouch(mouseId, e);
       elt.dispatchEvent(touchEvent.event);
+      
+      circle.delete();
 
       // Remove the event listeners
       elt.removeEventListener('mousemove', mouseMove, false);
