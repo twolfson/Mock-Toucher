@@ -594,7 +594,6 @@
           // When a touch is clicked on
           touch.addMouseEvent(function () {
             // Remove it from the collection
-            // TODO: There may be necessary debug logic for falling back the 'mouseTouch'
             touchCollection.removeTouch(touch);
           });
         });
@@ -611,6 +610,9 @@
             document.removeEventListener('keyup', ctrlKeyUp, false);
           }
         }
+        
+        // Bind ctrl key listener
+        document.addEventListener('keyup', ctrlKeyUp, false);
       }
     }
 
