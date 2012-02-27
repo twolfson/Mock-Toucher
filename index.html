@@ -13,53 +13,134 @@
       margin: 0;
       padding: 0;
     }
+    
+    canvas {
+      background: white;
+      border: 1px solid black;
+    }
   </style>
 </head>
 <body>
-  <fieldset id="logArea">
-    <legend>Console</legend>
-  </fieldset>
-  <canvas id="testCanvas"></canvas>
+  <p>
+    Attribution to <a href="http://tbranyen.com/">Tim Branyen</a>, <a href="http://miketaylr.com">Mike Taylr</a>,  <a href="http://paulirish.com/">Paul Irish</a> &amp; <a href="//smus.com">Boris Smus</a> for multitouch canvas.
+    <br/>
+    <a href="http://paulirish.com/demo/multi">http://paulirish.com/demo/multi</a>
+  </p>
+  <canvas width="922" height="450" id="example"></canvas>
   <script>
+    // Comments and code taken from http://paulirish.com/demo/multi
+    // Repurposed by Todd Wolfson to remove jQuery dependancy
+
+    // canvasDrawr originally from Mike Taylr  http://miketaylr.com/
+    // Tim Branyen massaged it: http://timbranyen.com/
+    // and i did too. with multi touch.
+    // and boris fixed some touch identifier stuff to be more specific.
+
     (function () {
-      var logArea = document.getElementById('logArea');
+    var CanvasDrawr = function(options) {
+        // grab canvas element
+        var canvas = document.getElementById(options.id),
+            ctxt = canvas.getContext("2d");
 
-      // Custom log function
-      window.log = function () {
-        var args = [].slice.call(arguments),
-            i,
-            len,
-            p;
+        canvas.style.width = '100%'
+        canvas.width = canvas.offsetWidth;
+        canvas.style.width = '';
 
-        // Log messages to the page
-        for (i = 0, len = arguments.length; i < len; i++) {
-          p = document.createElement('p');
-          p.innerHTML = arguments[i];
-          logArea.appendChild(p);
-        }
+        // set props from options, but the defaults are for the cool kids
+        ctxt.lineWidth = options.size || Math.ceil(Math.random() * 35);
+        ctxt.lineCap = options.lineCap || "round";
+        ctxt.pX = undefined;
+        ctxt.pY = undefined;
 
-        // and log messages to the console
-        // console && console.log && console.log.apply(console, args);
-      }
-    }());
-  </script>
-  <script>
-    (function () {
-      // Document test code
-      document.addEventListener('touchstart', log, false);
-      document.addEventListener('touchend', log, false);
-      document.addEventListener('touchmove', log, false);
-      document.addEventListener('touchenter', log, false);
-      document.addEventListener('touchleave', log, false);
-      document.addEventListener('touchcancel', log, false);
+        var lines = [,,];
+        var offset = (function () {
+          // Get the offsets of canvas itself
+          var offTop = canvas.offsetTop || 0,
+              offLeft = canvas.offsetLeft || 0,
+              offParent = canvas;
 
-      // Element specific test code
-      /* var testCanvas = document.getElementById('testCanvas');
-      el.addEventListener('touchstart', log, false);
-      el.addEventListener('touchend', log, false);
-      el.addEventListener('touchcancel', log, false);
-      el.addEventListener('touchleave', log, false);
-      el.addEventListener('touchmove', log, false); */
+          while (true) {
+            // Get the offsetParent of the current offsetParent
+            offParent = offParent.offsetParent;
+
+            // If there is no parent, stop looping
+            if (!offParent) { break; }
+
+            // Add the offsetTop and offsetLeft to the running totals
+            offTop += offParent.offsetTop;
+            offLeft += offParent.offsetLeft;
+          }
+
+          // Return the offsets
+          return {'top': offTop, 'left': offLeft};
+        }());
+
+        var self = {
+            //bind click events
+            init: function() {
+              //set pX and pY from first click
+              canvas.addEventListener('touchstart', self.preDraw, false);
+              canvas.addEventListener('touchmove', self.draw, false);
+            },
+
+            preDraw: function(event) {
+              var touches = event.touches || [],
+                  touch,
+                  i = 0,
+                  len = touches.length;
+              for (; i < len; i++) {
+                touch = touches[i];
+                (function (i, touch) {
+                  var id = touch.identifier;
+                  lines[id] = { x     : touch.pageX - offset.left,
+                    y     : touch.pageY - offset.top,
+                    color : options.color || ["red", "green", "yellow", "blue", "magenta", "orangered"][(Math.random() * 6)|0]
+                  };
+                }(i, touch));
+              }
+              event.preventDefault();
+            },
+
+            draw: function(event) {
+              var e = event,
+                  hmm = {},
+                  touches = event.touches || [],
+                  touch,
+                  i = 0,
+                  len = touches.length;
+              for (; i < len; i++) {
+                touch = touches[i];
+                (function (i, touch) {
+                  var id = touch.identifier,
+                      moveX = touch.pageX - offset.left - lines[id].x,
+                      moveY = touch.pageY - offset.top - lines[id].y;
+
+                  var ret = self.move(id, moveX, moveY);
+                  lines[id].x = ret.x;
+                  lines[id].y = ret.y;
+                }(i, touch));
+              }
+
+              event.preventDefault();
+            },
+
+            move: function(i, changeX, changeY) {
+              ctxt.strokeStyle = lines[i].color;
+              ctxt.beginPath();
+              ctxt.moveTo(lines[i].x, lines[i].y);
+
+              ctxt.lineTo(lines[i].x + changeX, lines[i].y + changeY);
+              ctxt.stroke();
+              ctxt.closePath();
+
+              return { x: lines[i].x + changeX, y: lines[i].y + changeY };
+            }
+        };
+
+        return self.init();
+    };
+
+    var super_awesome_multitouch_drawing_canvas_thingy = new CanvasDrawr({id:"example", size: 5 });
     }());
   </script>
   <script src="mock.js"></script>

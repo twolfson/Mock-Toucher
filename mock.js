@@ -22,7 +22,6 @@
   }
   /**
    * Static class method to update a mouse action
-   * TODO: Complete
    */
   Touch.moveTouch = function (id, mouseEvent) {
     mice[id].update(mouseEvent);
@@ -214,9 +213,7 @@
     }
   };
 
-  
   // document.addEventListener('mousedown', function (e) {
-  // Currently testing on http://paulirish.com/demo/multi
   document.getElementById('example').addEventListener('mousedown', function (e) {
     var elt = this,
         touchEvent = new TouchEvent(),
@@ -224,6 +221,7 @@
 
     elt.dispatchEvent(touchEvent.event);
 
+    // For a touch move, enter, leave, etc to occur a touch must currently be happening
     // Set up event functions for binding and removal
     function mouseMove(e) {
       touchEvent.changeType('touchmove');
@@ -246,9 +244,8 @@
     elt.addEventListener('mouseup', mouseUp, false);
   });
 
-
-
   // TODO: Mouse enter, leave, cancel
+  // TODO: Movement of a mouse should be handled by TouchEvent to update the proper pieces accordingly
 }());
 
 // We are designing for one mouse that can be multiplexed
