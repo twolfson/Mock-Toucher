@@ -2,6 +2,9 @@
   var touchId = 0,
       mice = {};
   function Touch(mouseEvent) {
+    // Fallback mouseEvent
+    mouseEvent = mouseEvent || {};
+
     // Grab the current id
     var id = touchId;
     this.identifier = id;
@@ -28,12 +31,12 @@
   };
   Touch.prototype = {
     'update': function (mouseEvent) {
-      this.screenX = mouseEvent.screenX;
-      this.screenY = mouseEvent.screenY;
-      this.clientX = mouseEvent.clientX;
-      this.clientY = mouseEvent.clientY;
-      this.pageX = mouseEvent.pageX;
-      this.pageY = mouseEvent.pageY;
+      this.screenX = mouseEvent.screenX || 0;
+      this.screenY = mouseEvent.screenY || 0;
+      this.clientX = mouseEvent.clientX || 0;
+      this.clientY = mouseEvent.clientY || 0;
+      this.pageX = mouseEvent.pageX || 0;
+      this.pageY = mouseEvent.pageY || 0;
     },
     'changeRadius': function (radiusX, radiusY) {
       this.radiusX = radiusX;
@@ -44,6 +47,41 @@
     },
     'changeForce': function (force) {
       this.force = force;
+    }
+  };
+
+  // Set up mouse circle style and constructor
+  mouseCircleStyle = [
+    "position: absolute; top: -100px; left: -100px",
+    "width: 50px; height: 50px",
+    "border-radius: 50%; -webkit-border-radius: 50%; -moz-border-radius: 50%",
+    "background: red; opacity: 0.5",
+    "pointer-events: none"].join('; ');
+  function MouseCircle() {
+    var circle = this.circle = document.createElement('div');
+    circle.setAttribute('style', mouseCircleStyle);
+    document.body.appendChild(circle);
+  }
+  MouseCircle.prototype = {
+    'width': 50,
+    'height': 50,
+    'halfWidth': 25,
+    'halfHeight': 25,
+    'moveTo': function (x, y) {
+      var circle = this.circle,
+          circleStyle = circle.style;
+      circleStyle.top = y - this.halfWidth + 'px';
+      circleStyle.left = x - this.halfHeight + 'px';
+    },
+    'hide': function () {
+      var circle = this.circle,
+          circleStyle = circle.style;
+      circleStyle.top = '-100px';
+      circleStyle.left = '-100px';
+    },
+    'delete': function () {
+      document.body.removeChild(this.circle);
+      delete this.circle;
     }
   };
 
@@ -137,7 +175,7 @@
      * @returns {Object<Touch>|undefined} Touch at the specified index
      * TODO: Find out what proper action is for an invalid index
      */
-    'item': function (id) {
+    'identifiedTouch': function (id) {
       // Search the list for the item
       var items = this._items,
           i = 0,
@@ -157,21 +195,28 @@
     }
   };
 
-  function TouchEvent() {
+  function TouchCollection() {
     // Generate a TouchList for this event
     this.touchList = new TouchList();
+
+    // Set up the mouse for this event
+    var touch = new Touch();
+
+    // Add the touch to this touchlist
+    this.touchList.add(touch);
+
+    // Save the mouse identifer
+    this.mouseId = touch.identifier;
   }
-  TouchEvent.prototype = {
+  TouchCollection.prototype = {
     'eventType': 'touchstart',
-    'update': function () {
-      // Localize the last mouse event
-      var mouseEvent = this.lastMouse,
-          eventType = this.eventType,
+    'update': function (mouseEvent) {
+      var eventType = this.eventType,
       // Create a generic event
           event = document.createEvent('Events');
       event.initEvent(eventType, mouseEvent.bubbles, mouseEvent.cancealable);
 
-      // Generate TouchEvent keys as properties
+      // Generate TouchCollection keys as properties
       event.altKey = mouseEvent.altKey;
       event.ctrlKey = mouseEvent.ctrlKey;
       event.shiftKey = mouseEvent.shiftKey;
@@ -181,10 +226,16 @@
       event.type = eventType;
 
       // Due to the nature of one click, we will have these all be equal for now
+      // TODO: If there is the ability for a touch to become fixed, start updating these
+      // Should be a comparison of the old touch location vs new touch location
       event.changedTouches = event.targetTouches = event.touches = this.touchList;
 
       // Save the event to this
       this.event = event;
+
+      // Update the mouse circle location
+      Touch.moveTouch(this.mouseId, mouseEvent);
+      // TODO: Move all relatively
 
       // Return this for a fluent interface
       return this;
@@ -192,105 +243,107 @@
     'changeType': function (eventType) {
       // Save the type, update, and return
       this.eventType = eventType;
-      this.update();
       return this;
     },
-    'addMouse': function (mouseEvent) {
-      // Generate a new touch with the mouse event
-      var touch = new Touch(mouseEvent);
+    'start': function (mouseEvent) {
+      // Change the event type
+      this.changeType('touchstart');
 
-      // Add the touch to this touchlist
-      this.touchList.add(touch);
+      // TODO: Show all circles (method showAll)
 
-      // Save this mouse event to this
-      this.lastMouse = mouseEvent;
+      // Update this event
+      this.update(mouseEvent);
 
-      // Update this
-      this.update();
+      // Fluent interface
+      return this;
+    },
+    'moveMouseTo': function (mouseEvent) {
+      // Change the event type
+      this.changeType('touchmove');
 
-      // Return the touch's identifier
-      return touch.identifier;
+      // Update this event
+      this.update(mouseEvent);
+
+      // Fluent interface
+      return this;
+    },
+    'end': function (mouseEvent) {
+      // Change the event type
+      this.changeType('touchend');
+
+      // Update this event
+      this.update(mouseEvent);
+
+      // TODO: Hide all circles (method hideAll)
+
+      // Fluent interface
+      return this;
     }
   };
-  
-  // Set up mouse circle style and constructor
-  mouseCircleStyle = [
-    "position: absolute; top: -100px; left: -100px",
-    "width: 50px; height: 50px",
-    "border-radius: 50%; -webkit-border-radius: 50%; -moz-border-radius: 50%",
-    "background: red; opacity: 0.5",
-    "pointer-events: none"].join('; '); 
-  function MouseCircle() {
-    var circle = this.circle = document.createElement('div');
-    circle.setAttribute('style', mouseCircleStyle);
-    document.body.appendChild(circle);
-  }
-  MouseCircle.prototype = {
-    'width': 50,
-    'height': 50,
-    'halfWidth': 25,
-    'halfHeight': 25,
-    'moveTo': function (x, y) {
-      var circle = this.circle,
-          circleStyle = circle.style;
-      circleStyle.top = y - this.halfWidth + 'px';
-      circleStyle.left = x - this.halfHeight + 'px';
-    },
-    'hide': function () {
-      var circle = this.circle,
-          circleStyle = circle.style;
-      circleStyle.top = '-100px';
-      circleStyle.left = '-100px';
-    },
-    'delete': function () {
-      document.body.removeChild(this.circle);
-      delete this.circle;
-    }
-  };
+
+  // Generate our global touch collection
+  var touchCollection = new TouchCollection();
 
   // document.addEventListener('mousedown', function (e) {
-  document.getElementById('example').addEventListener('mousedown', function (e) {
-    var elt = this,
-        touchEvent = new TouchEvent(),
-        mouseId = touchEvent.addMouse(e);
+  function noop() {}
+  var elt = document.getElementById('example'),
+      mouseMove = noop,
+      mouseUp = noop,
+      mouseDown = function (e) {
+        // Start the mouse click
+        touchCollection.start(e);
 
-    elt.dispatchEvent(touchEvent.event);
-    
-    // Draw a mouse circle
-    var circle = new MouseCircle();
-    circle.moveTo(e.pageX, e.pageY);
+        // And dispatch the event
+        elt.dispatchEvent(touchCollection.event);
 
-    // For a touch move, enter, leave, etc to occur a touch must currently be happening
-    // Set up event functions for binding and removal
-    function mouseMove(e) {
-      touchEvent.changeType('touchmove');
-      Touch.moveTouch(mouseId, e);
-      elt.dispatchEvent(touchEvent.event);
-      circle.moveTo(e.pageX, e.pageY);
-    }
+        // For a touch move, enter, leave, etc to occur a touch must currently be happening
+        // Set up event functions for binding and removal
+        mouseMove = function (e) {
+          // When the mouse moves, move the collection
+          touchCollection.moveMouseTo(e);
 
-    function mouseUp(e) {
-      touchEvent.changeType('touchend');
-      Touch.moveTouch(mouseId, e);
-      elt.dispatchEvent(touchEvent.event);
-      
-      circle.delete();
+          // And dispatch the event
+          elt.dispatchEvent(touchCollection.event);
+        }
 
-      // Remove the event listeners
-      elt.removeEventListener('mousemove', mouseMove, false);
-      elt.removeEventListener('mouseup', mouseUp, false);
-    }
+        mouseUp = function (e) {
+          // When the mouse is lifted, end the movement
+          touchCollection.end(e);
 
-    // Add the motion and end event listeners
-    elt.addEventListener('mousemove', mouseMove, false);
-    elt.addEventListener('mouseup', mouseUp, false);
-  });
+          elt.dispatchEvent(touchCollection.event);
+
+          // Remove the event listeners
+          elt.removeEventListener('mousemove', mouseMove, false);
+          elt.removeEventListener('mouseup', mouseUp, false);
+
+          // and prevent any accidental calls
+          mouseMove = noop;
+          mouseUp = noop;
+        }
+
+        // Add the motion and end event listeners
+        elt.addEventListener('mousemove', mouseMove, false);
+        elt.addEventListener('mouseup', mouseUp, false);
+      };
+
+  // Begin listening for mousedown actions on the select element
+  elt.addEventListener('mousedown', mouseDown);
 
   // TODO: Mouse enter, leave, cancel
-  // TODO: Movement of a mouse should be handled by TouchEvent to update the proper pieces accordingly
+  // TODO: Movement of a mouse should be handled by TouchCollection to update the proper pieces accordingly
+  // TODO: Element selector panel -- allow for CSS query or visual binding (abs position overlay)
+  document.onkeydown = function (e) {
+    // Shift = 16, Ctrl = 17;
+    console.log(e.keyCode);
+  };
 }());
 
 // We are designing for one mouse that can be multiplexed
 // This means we have one mouse as the center of all actions
 // We will use things like shift to add new clicks and ctrl to remove them
 // Alt will be for editing a click - e.g. radius (maybe via a popup slider)
+
+// When the mouse is clicked, all cursors should appear and drag with the content
+// When shift is pressed, all cursors should appear (relative to the mouse position) and stay fixed in place as long as shift is held
+// Any mouseup's during shift will add a new cursor at that location (this is to allow for hot-resumes)
+// Ctrl will have the same effect but for subtraction (this will require removing pointer events)
