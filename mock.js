@@ -107,6 +107,7 @@
       this.clientY += relY;
       var x = this.pageX = this.pageX + relX,
           y = this.pageY = this.pageY + relY;
+      this.updateTarget();
       this.circle.moveTo(x, y);
     },
     'moveToEvent': function (mouseEvent) {
@@ -116,6 +117,7 @@
       this.clientY = mouseEvent.clientY || 0;
       var x = this.pageX = mouseEvent.pageX || 0,
           y = this.pageY = mouseEvent.pageY || 0;
+      this.updateTarget();
       this.circle.moveTo(x, y);
     },
     'changeRadius': function (radiusX, radiusY) {
@@ -128,11 +130,21 @@
     'changeForce': function (force) {
       this.force = force;
     },
+    'updateTarget': function () {
+      var target = this.target,
+          position = this.getLastPosition();
+      this.lastTarget = target;
+      this.target = document.elementFromPoint(position.x, position.y);
+    },
     'moveToLastPosition': function () {
       this.circle.moveToLastPosition();
     },
     'hide': function () {
+      // Hide the circle
       this.circle.hide();
+
+      // Remove the last target (since now there is none)
+      delete this.lastTarget;
     },
     'delete': function () {
       // Delete the touch from storage
@@ -281,9 +293,6 @@
   };
 
   function TouchCollection() {
-    // Generate a TouchList for this event
-    this.touchList = new TouchList();
-
     // Set up linked clicks
     this.pseudoClicks = [];
   }
@@ -304,14 +313,6 @@
       // Define the event type as a property
       event.type = eventType;
 
-      // Due to the nature of one click, we will have these all be equal for now
-      // TODO: If there is the ability for a touch to become fixed, start updating these
-      // Should be a comparison of the old touch location vs new touch location
-      event.changedTouches = event.targetTouches = event.touches = this.touchList;
-
-      // Save the event to this
-      this.event = event;
-
       // Update the mouse location
       var mouseTouch = this.mouseTouch;
 
@@ -319,9 +320,6 @@
       if (!mouseTouch) {
         // Set up the mouse for this event
         var touch = new Touch();
-
-        // Add the touch to this touchlist
-        this.touchList.add(touch);
 
         // Save the mouse touch
         mouseTouch = this.mouseTouch = touch;
@@ -335,6 +333,26 @@
       this.eachTouch(function (touch, isMouseTouch) {
         touch.moveRel(diffX, diffY);
       });
+
+      // TODO: Touchstart (any / target specific?)
+      // TODO: Touchmove (any) / enter (old->new) / leave(new->old) logic
+      // TODO: Touchend (any / target specific?) / Touchcancel (see how document.blur works)
+
+      // Generate a TouchList for this event
+      var touchList = new TouchList();
+
+      // Add all touches to the touchList
+      this.eachTouch(function (touch) {
+        touchList.add(touch);
+      });
+
+      // Due to the nature of one click, we will have these all be equal for now
+      // TODO: If there is the ability for a touch to become fixed, start updating these
+      // Should be a comparison of the old touch location vs new touch location
+      event.changedTouches = event.targetTouches = event.touches = touchList;
+
+      // Save the event to this
+      this.event = event;
 
       // Return this for a fluent interface
       return this;
@@ -400,9 +418,6 @@
         this.pseudoClicks.push(pseudoClick);
       }
 
-      // Add the click to our touch list
-      this.touchList.add(touch);
-
       // Fluent interface
       return this;
     },
@@ -424,9 +439,6 @@
           }
         }
       }
-
-      // Remove the item from the touchList
-      this.touchList.remove(touch);
 
       // Delete the touch
       touch.delete();
@@ -472,13 +484,13 @@
       var mouseTouch = this.mouseTouch,
           lastPosition,
           elt;
-      
+
       // If there is a touch
       if (mouseTouch) {
         // Get its last position and the element at that location
         lastPosition = mouseTouch.getLastPosition();
         elt = document.elementFromPoint(lastPosition.x, lastPosition.y);
-        
+
         // If there is an element
         if (elt) {
           // Trigger the event on it
@@ -674,19 +686,13 @@
   overlayHidden.id = 'MOCKTOUCHERoverlayHidden';
   overlay.setAttribute('style', overlayStyle);
   overlayHidden.setAttribute('style', overlayStyle + '; display: none; background: limegreen; color: purple; cursor: pointer; padding: 0; font-size: .5em;');
-  overlay.innerHTML = ['<div style="text-align: center; color: purple;"><strong>Mock Toucher</strong> by <a href="mailto:todd@twolfson.com">Todd Wolfson</a></div>',
-    '<div>&nbsp;</div>',
-    '<div>',
-      '<label for="MOCKTOUCHERcssSelector">Mock Touches on: </label>',
-      '<input type="text" id="MOCKTOUCHERcssSelector" name="MOCKTOUCHERcssSelector" value="canvas"/>',
-    '</div>',
-    '<div>CSS query selects only the first element.</div>',
+  overlay.innerHTML = ['<div style="text-align: center; color: purple;"><strong>Mock Toucher</strong> by <a href="http://twolfson.com/" target="_blank">Todd Wolfson</a></div>',
     // '<div>&nbsp;</div>',
     // '<div>',
       // '<label for="MOCKTOUCHERshowCircles">Show circles: </label>',
       // '<input type="checkbox" id="MOCKTOUCHERshowCircles" name="MOCKTOUCHERshowCircles" checked="checked"/>',
     // '</div>',
-    '<div>&nbsp;</div>',
+    // '<div>&nbsp;</div>',
     '<div style="text-align: center"><span id="MOCKTOUCHERhideText" style="color: red; text-decoration: underline; cursor: pointer;">Hide Panel</span></div>'].join('');
   overlayHidden.innerHTML = '&raquo;';
   // overlayHidden.innerHTML = '<div>M</div><div>O</div><div>C</div><div>K</div><div>&nbsp;</div><div>T</div><div>O</div><div>U</div><div>C</div><div>H</div><div>E</div><div>R</div>';
