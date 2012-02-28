@@ -45,10 +45,14 @@
 
     // Get mock toucher location
     var mockSrc = basePath(location + '').replace(/http(s)?:/i, '') + 'mock.js',
-        mockToucherLink = document.getElementById('mockToucherLink');
+        mockToucherLink = document.getElementById('mockToucherLink'),
+        mockToucherBookmarklet = 'javascript:(function(){var d=document,s=d.createElement("script"),t=document.getElementsByTagName("script")[0];s.async=true,s.src="' + mockSrc + '";t.parentNode.insertBefore(s,t);}());void 0;';
 
     // Set up the mockToucherLink href
-    mockToucherLink.setAttribute('href', 'javascript:(function(){var d=document,s=d.createElement("script"),t=document.getElementsByTagName("script")[0];s.async=true,s.src="' + mockSrc + '";t.parentNode.insertBefore(s,t);}());void 0;');
+    mockToucherLink.setAttribute('href', mockToucherBookmarklet);
+    
+    // TODO: Remove from production
+    eval(mockToucherBookmarklet);
 
     // Prevent multiple opens
     var openedBefore = false;

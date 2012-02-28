@@ -466,6 +466,25 @@
 
       // Fluent interface
       return this;
+    },
+    'dispatchEvents': function () {
+      // TODO: Remove stand-in functionality
+      var mouseTouch = this.mouseTouch,
+          lastPosition,
+          elt;
+      
+      // If there is a touch
+      if (mouseTouch) {
+        // Get its last position and the element at that location
+        lastPosition = mouseTouch.getLastPosition();
+        elt = document.elementFromPoint(lastPosition.x, lastPosition.y);
+        
+        // If there is an element
+        if (elt) {
+          // Trigger the event on it
+          elt.dispatchEvent(this.event);
+        }
+      }
     }
   };
 
@@ -480,7 +499,7 @@
           touchCollection.start(e);
 
           // And dispatch the event
-          elt.dispatchEvent(touchCollection.event);
+          touchCollection.dispatchEvents();
 
           // For a touch move, enter, leave, etc to occur a touch must currently be happening
           // Set up event functions for binding and removal
@@ -489,7 +508,7 @@
             touchCollection.moveMouseTo(e);
 
             // And dispatch the event
-            elt.dispatchEvent(touchCollection.event);
+            touchCollection.dispatchEvents();
           }
 
           mouseUp = function (e) {
@@ -497,7 +516,7 @@
             touchCollection.end(e);
 
             // And dispatch the event
-            elt.dispatchEvent(touchCollection.event);
+            touchCollection.dispatchEvents();
 
             // Remove the event listeners
             elt.removeEventListener('mousemove', mouseMove, false);
@@ -673,45 +692,46 @@
   // overlayHidden.innerHTML = '<div>M</div><div>O</div><div>C</div><div>K</div><div>&nbsp;</div><div>T</div><div>O</div><div>U</div><div>C</div><div>H</div><div>E</div><div>R</div>';
   document.body.appendChild(overlay);
   document.body.appendChild(overlayHidden);
-  
+
   // Bindings for overlay
   var cssSelector = document.getElementById('MOCKTOUCHERcssSelector'),
       // showCircles = document.getElementById('MOCKTOUCHERshowCircles'),
       hideText = document.getElementById('MOCKTOUCHERhideText');
-      
+
   function ex(fn) {
     fn();
     return fn;
   }
-  
+
   // When the CSS selector is changed
-  cssSelector.onchange = ex(function () {
-    // Get the query
-    var query = cssSelector.value,
-        elt;
-    
-    // Attempt to select the element
-    try {
-      elt = document.querySelector(query);
-    } catch (e) {}
-    
-    // If there was a last MockToucher, delete it
-    if (lastMocker) {
-      lastMocker.delete();
-      lastMocker = null;
-    }
-    
-    // If a new element has been found
-    if (elt) {
-      // Create and save the new MockToucher for it
-      lastMocker = new MockToucher(elt);
-    }
-  });
-  
+  lastMocker = new MockToucher(document);
+  // cssSelector.onchange = ex(function () {
+    // // Get the query
+    // var query = cssSelector.value,
+        // elt;
+
+    // // Attempt to select the element
+    // try {
+      // elt = document.querySelector(query);
+    // } catch (e) {}
+
+    // // If there was a last MockToucher, delete it
+    // if (lastMocker) {
+      // lastMocker.delete();
+      // lastMocker = null;
+    // }
+
+    // // If a new element has been found
+    // if (elt) {
+      // // Create and save the new MockToucher for it
+      // lastMocker = new MockToucher(elt);
+    // }
+  // });
+
   // // Show circles logic
   // showCircles.onclick = function () {
   // };
-  
+
   // Hide logic
   hideText.onclick = function () {
     overlay.style.display = 'none';
