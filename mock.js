@@ -292,6 +292,42 @@
     }
   };
 
+  // Set up a Set constructor
+  function Set() {
+    this.length = 0;
+  }
+  Set.prototype = {
+    'add': function (item) {
+      var inArr = this.indexOf(item) >= 0;
+
+      // If the item is not in the array
+      if (inArr === false) {
+        // Add it to the set
+        this[this.length] = item;
+
+        // and update the length
+        this.length += 1;
+      }
+    },
+    'indexOf': function (item) {
+      var i = 0,
+          len = this.length,
+          index = -1;
+
+      // Go through the current items
+      for (; i < len; i++) {
+        // If the item exists
+        if (item === this[i]) {
+          // Update the index and stop searching
+          index = i;
+          break;
+        }
+      }
+
+      return index;
+    }
+  }
+
   function TouchCollection() {
     // Set up linked clicks
     this.pseudoClicks = [];
@@ -334,22 +370,67 @@
         touch.moveRel(diffX, diffY);
       });
 
-      // TODO: Touchstart (any / target specific?)
+      // TODO: Touchstart (any)
       // TODO: Touchmove (any) / enter (old->new) / leave(new->old) logic
-      // TODO: Touchend (any / target specific?) / Touchcancel (see how document.blur works)
+      // TODO: Touchend (any) / Touchcancel (see how document.blur works)
 
-      // Generate a TouchList for this event
-      var touchList = new TouchList();
+      /* TouchEvent.changedTouches
+          A TouchList of all the Touch objects representing individual points of contact
+          whose states changed between the previous touch event and this one. Read only. */
+      /* TouchEvent.targetTouches
+          A TouchList of all the Touch  objects that are both currently in contact with the touch surface
+          and were also started on the same element that is the target of the event. Read only. */
+      /* TouchEvent.touches
+          A TouchList of all the Touch  objects representing all current points of contact
+          with the surface, regardless of target or changed status. Read only. */
 
-      // Add all touches to the touchList
+      // Generate a TouchList of all touches
+      var touches = new TouchList();
+      this.eachTouch(function (touch) { touches.add(touch); });
+
+      // TODO: Remove Set
+      // TODO: Create own WeakMap
+      // Generate a weak map for all targets
+      var targetMap = new WeakMap();
+
+      // Loop through all touches
       this.eachTouch(function (touch) {
-        touchList.add(touch);
+        // Put in a stub map of touches for the current and last target
+        var lastTarget = touch.lastTarget,
+            target = touch.target;
+        targetMap.set(target, {'same': [], 'add': [], 'rem': []});
+        if (lastTarget) {
+          targetMap.set(lastTarget, {'same': [], 'add': [], 'rem': []});
+        }
+      });
+
+      // Loop through all touches again
+      this.eachTouch(function (touch) {
+        // Get the last target, current target, and if it has changed
+        var lastTarget = touch.lastTarget,
+            target = touch.target,
+            thereWasALastTarget = !!lastTarget,
+            targetHasChanged = target !== lastTarget;
+
+        // If there was not a last target or the target has changed
+        if (!thereWasALastTarget || targetHasChanged) {
+          // Add the touch to the rem array of the lastTarget
+          if (thereWasALastTarget) {
+            targetMap.get(lastTarget).rem.push(touch);
+          }
+
+          // and add the touch to the add array of the new target
+          targetMap.get(target).add.push(touch);
+        } else {
+        // Otherwise, add the touch to the same array of the target
+          targetMap.get(target).same.push(touch);
+        }
       });
 
       // Due to the nature of one click, we will have these all be equal for now
       // TODO: If there is the ability for a touch to become fixed, start updating these
       // Should be a comparison of the old touch location vs new touch location
-      event.changedTouches = event.targetTouches = event.touches = touchList;
+      event.changedTouches = event.targetTouches = event.touches = touches;
 
       // Save the event to this
       this.event = event;
