@@ -443,6 +443,7 @@
           j,
           len2,
           eventFilter,
+          changedTouches,
           targetTouches,
           targetObj,
           filteredTouches,
@@ -461,12 +462,12 @@
         }, {
           'eventType': 'touchenter',
           'filter': function (changeObj) {
-            return changeObj.add;
+            return [].concat(changeObj.add).concat(changeObj.rem);
           }
         }, {
           'eventType': 'touchleave',
           'filter': function (changeObj) {
-            return changeObj.rem;
+            return [].concat(changeObj.rem).concat(changeObj.add);
           }
         }];
       }
@@ -480,8 +481,7 @@
       /* TouchEvent.touches
           A TouchList of all the Touch  objects representing all current points of contact
           with the surface, regardless of target or changed status. Read only. */
-      // TODO: Ask MDN about what they mean about 'started on the same elements' for targetTouches. 'Currently on' would make a lot more sense.
-      // TODO: Switch over to .initialTarget tracking if MDN comes back with 'started on'.
+      // TODO: Switch over to .initialTarget tracking and fix targetTouches to do it right.
 
       for (; i < len; i++) {
         target = targets[i];
@@ -491,12 +491,12 @@
           eventFilter = eventFilterArr[j];
           eventType = eventFilter.eventType;
           
-          // Create a targetTouches bassed on the filtered items
+          // Create a changedTouches based on the filtered items
           targetObj = targetMap.get(target);
           filteredTouches = eventFilter.filter(targetObj);
-          targetTouches = new TouchList();
+          changedTouches = new TouchList();
           for (k = 0, len3 = filteredTouches.length; k < len3; k++) {
-            targetTouches.add(filteredTouches[k]);
+            changedTouches.add(filteredTouches[k]);
           }
 
           // Create a generic event
@@ -514,11 +514,10 @@
           // Define the event type as a property
           event.type = eventType;
 
-          // Since any action affects all clicks, assume that changedTouches = touches
-          // TODO: If there is the ability for a touch to become fixed, start updating these
-          // Should be a comparison of the old touch location vs new touch location (this will require semantic repair of .getLastLocation to .getRestoreLocation)
-          event.changedTouches = event.touches = touches;
-          event.targetTouches = targetTouches;
+          // Save different TouchList's
+          // TODO: Repair targetTouches with initial as spec'd
+          event.targetTouches = event.touches = touches;
+          event.changedTouches = changedTouches;
 
           // Save the event to an array
           targetEventArr.push({'target': target, 'event': event});
