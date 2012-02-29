@@ -335,20 +335,6 @@
   TouchCollection.prototype = {
     'eventType': 'touchstart',
     'update': function (mouseEvent) {
-      var eventType = this.eventType,
-      // Create a generic event
-          event = document.createEvent('Events');
-      event.initEvent(eventType, mouseEvent.bubbles, mouseEvent.cancealable);
-
-      // Generate TouchCollection keys as properties
-      event.altKey = mouseEvent.altKey;
-      event.ctrlKey = mouseEvent.ctrlKey;
-      event.shiftKey = mouseEvent.shiftKey;
-      event.metaKey = mouseEvent.metaKey;
-
-      // Define the event type as a property
-      event.type = eventType;
-
       // Update the mouse location
       var mouseTouch = this.mouseTouch;
 
@@ -390,17 +376,26 @@
 
       // TODO: Remove Set
       // TODO: Create own WeakMap
-      // Generate a weak map for all targets
-      var targetMap = new WeakMap();
+      // Generate a weak map for all targets and collection of all targets
+      var targetMap = new WeakMap(),
+          targets = this.targets = new Set();
 
       // Loop through all touches
       this.eachTouch(function (touch) {
         // Put in a stub map of touches for the current and last target
         var lastTarget = touch.lastTarget,
             target = touch.target;
-        targetMap.set(target, {'same': [], 'add': [], 'rem': []});
+
+        // If the target is not off screen
+        if (target) {
+          targetMap.set(target, {'same': [], 'add': [], 'rem': []});
+          targets.add(target);
+        }
+
+        // If the there was a last target
         if (lastTarget) {
           targetMap.set(lastTarget, {'same': [], 'add': [], 'rem': []});
+          targets.add(lastTarget);
         }
       });
 
@@ -412,28 +407,66 @@
             thereWasALastTarget = !!lastTarget,
             targetHasChanged = target !== lastTarget;
 
-        // If there was not a last target or the target has changed
-        if (!thereWasALastTarget || targetHasChanged) {
-          // Add the touch to the rem array of the lastTarget
-          if (thereWasALastTarget) {
-            targetMap.get(lastTarget).rem.push(touch);
-          }
+        // If the touch has a target
+        if (target) {
+          // If there was not a last target or the target has changed
+          if (!thereWasALastTarget || targetHasChanged) {
+            // Add the touch to the rem array of the lastTarget
+            if (thereWasALastTarget) {
+              targetMap.get(lastTarget).rem.push(touch);
+            }
 
-          // and add the touch to the add array of the new target
-          targetMap.get(target).add.push(touch);
-        } else {
-        // Otherwise, add the touch to the same array of the target
-          targetMap.get(target).same.push(touch);
+            // and add the touch to the add array of the new target
+            targetMap.get(target).add.push(touch);
+          } else {
+          // Otherwise, add the touch to the same array of the target
+            targetMap.get(target).same.push(touch);
+          }
         }
       });
 
-      // Due to the nature of one click, we will have these all be equal for now
-      // TODO: If there is the ability for a touch to become fixed, start updating these
-      // Should be a comparison of the old touch location vs new touch location
-      event.changedTouches = event.targetTouches = event.touches = touches;
+      // Time to create some events and their corresponding TouchLists
+      // Iterate the targets
+      var eventType = this.eventType,
+          i = 0,
+          len = targets.length,
+          target,
+          event,
+          targetEventArr = [];
+      for (; i < len; i++) {
+        target = targets[i];
 
-      // Save the event to this
-      this.event = event;
+        // Create a generic event
+        event = document.createEvent('Events');
+
+        // TODO: Conditional mousemove logic
+        event.initEvent(eventType, mouseEvent.bubbles, mouseEvent.cancealable);
+
+        // Generate TouchCollection keys as properties
+        event.altKey = mouseEvent.altKey;
+        event.ctrlKey = mouseEvent.ctrlKey;
+        event.shiftKey = mouseEvent.shiftKey;
+        event.metaKey = mouseEvent.metaKey;
+
+        // Define the event type as a property
+        event.type = eventType;
+
+        // All events get the same touches
+        event.touches = touches;
+
+        // TODO: Create TouchList of 'add', 'same'
+
+        // Due to the nature of one click, we will have these all be equal for now
+        // TODO: If there is the ability for a touch to become fixed, start updating these
+        // Should be a comparison of the old touch location vs new touch location
+        event.changedTouches = event.targetTouches = event.touches = touches;
+
+        // Save the event to an array
+        targetEventArr.push({'target': target, 'event': event});
+      }
+
+      // Save the events for dispatching
+      this.events = targetEventArr;
 
       // Return this for a fluent interface
       return this;
@@ -561,23 +594,21 @@
       return this;
     },
     'dispatchEvents': function () {
-      // TODO: Remove stand-in functionality
-      var mouseTouch = this.mouseTouch,
-          lastPosition,
-          elt;
+      // Take the list of events and their targets
+      var events = this.events,
+          event,
+          i = 0,
+          len = events.length;
 
-      // If there is a touch
-      if (mouseTouch) {
-        // Get its last position and the element at that location
-        lastPosition = mouseTouch.getLastPosition();
-        elt = document.elementFromPoint(lastPosition.x, lastPosition.y);
-
-        // If there is an element
-        if (elt) {
-          // Trigger the event on it
-          elt.dispatchEvent(this.event);
-        }
+      // Iterate the events and targets
+      for (; i < len; i++) {
+        // Dispatch each event to its respective target
+        event = events[i];
+        event.target.dispatchEvent(event.event);
       }
+
+      // Fluent interface
+      return this;
     }
   };
 
