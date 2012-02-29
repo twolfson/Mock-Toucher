@@ -446,9 +446,25 @@
           eventType;
 
       // TODO: Change filterArr if we are looping through a mousemove
-      // TODO: Touchstart (any)
-      // TODO: Touchmove (any) / enter (old->new) / leave(new->old) logic
-      // TODO: Touchend (any) / Touchcancel (see how document.blur works)
+      if (eventType === 'touchmove') {
+        eventFilterArr = [{
+          'eventType': 'touchmove',
+          'filter': function (changeObj) {
+            return changeObj.same;
+          }
+        }, {
+          'eventType': 'touchenter',
+          'filter': function (changeObj) {
+            return changeObj.add;
+          }
+        }, {
+          'eventType': 'touchleave',
+          'filter': function (changeObj) {
+            return changeObj.rem;
+          }
+        }];
+      }
+      // TODO: Touchcancel (see how document.blur works)
 
       /* TouchEvent.changedTouches
           A TouchList of all the Touch objects representing individual points of contact
@@ -483,6 +499,8 @@
           // Define the event type as a property
           event.type = eventType;
 
+          // TODO: Ask MDN about what they mean about 'started on the same elements' for targetTouches. 'Currently on' would make a lot more sense.
+          // TODO: Switch over to .initialTarget tracking if MDN comes back with 'started on'.
           // Since any action affects all clicks, assume that changedTouches = touches
           // TODO: If there is the ability for a touch to become fixed, start updating these
           // Should be a comparison of the old touch location vs new touch location (this will require semantic repair of .getLastLocation to .getRestoreLocation)
