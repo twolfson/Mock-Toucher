@@ -5,11 +5,18 @@
         "width: 50px; height: 50px",
         "border-radius: 50%; -webkit-border-radius: 50%; -moz-border-radius: 50%",
         "background: red; opacity: 0.5",
-        "pointer-events: none"].join('; ');
+        "pointer-events: none"].join('; '),
+      hideCircles = false;
   function MouseCircle() {
     var circle = this.circle = document.createElement('div');
     circle.setAttribute('style', mouseCircleStyle);
     document.body.appendChild(circle);
+    
+    // If circles are hidden
+    if (hideCircles) {
+      // Hide the circle
+      this.hideShape();
+    }
   }
   MouseCircle.prototype = {
     'width': 50,
@@ -58,6 +65,12 @@
           circle = this.circle;
       circle.removeEventListener.apply(circle, args);
     },
+    'hideShape': function () {
+      this.circle.style.display = 'none';
+    },
+    'showShape': function () {
+      this.circle.style.display = '';
+    }
   };
 
   var touchId = 0,
@@ -134,7 +147,8 @@
       var target = this.target,
           position = this.getLastPosition();
       this.lastTarget = target;
-      this.target = document.elementFromPoint(position.x, position.y);
+      target = this.target = document.elementFromPoint(position.x, position.y);
+      this.initialTarget = this.initialTarget || target;
     },
     'moveToLastPosition': function () {
       this.circle.moveToLastPosition();
@@ -143,8 +157,9 @@
       // Hide the circle
       this.circle.hide();
 
-      // Remove the last target (since now there is none)
+      // Remove the initial and last target (since now there is none)
       delete this.lastTarget;
+      delete this.initialTarget;
     },
     'delete': function () {
       // Delete the touch from storage
@@ -179,6 +194,12 @@
 
       // Disable click
       this.circle.disableClick();
+    },
+    'hideCircle': function () {
+      this.circle.hideShape();
+    },
+    'showCircle': function () {
+      this.circle.showShape();
     }
   };
 
@@ -260,17 +281,15 @@
     /**
      * Item method as specified by MDN
      * @param {Number} index Index of touch to return
-     * @returns {Object<Touch>|undefined} Touch at the specified index
-     * TODO: Find out what proper action is for an invalid index
+     * @returns {Object<Touch>|null} Touch at the specified index
      */
     'item': function (index) {
-      return this[index];
+      return this[index] || null;
     },
     /**
      * Identified touch method as specified by MDN
      * @param {Number} id Identifier of touch to retrieve
-     * @returns {Object<Touch>|undefined} Touch at the specified index
-     * TODO: Find out what proper action is for an invalid index
+     * @returns {Object<Touch>|null} Touch at the specified index
      */
     'identifiedTouch': function (id) {
       // Search the list for the item
@@ -287,8 +306,8 @@
         }
       }
 
-      // Otherwise, return undefined
-      return;
+      // Otherwise, return null
+      return null;
     }
   };
 
@@ -447,6 +466,7 @@
           targetTouches,
           targetObj,
           filteredTouches,
+          filteredTouch,
           k,
           len3;
 
@@ -481,7 +501,6 @@
       /* TouchEvent.touches
           A TouchList of all the Touch  objects representing all current points of contact
           with the surface, regardless of target or changed status. Read only. */
-      // TODO: Switch over to .initialTarget tracking and fix targetTouches to do it right.
 
       for (; i < len; i++) {
         target = targets[i];
@@ -498,11 +517,19 @@
           for (k = 0, len3 = filteredTouches.length; k < len3; k++) {
             changedTouches.add(filteredTouches[k]);
           }
+          
+          // Construct target touches
+          targetTouches = new TouchList();
+          filteredTouches = [].concat(targetObj.same).concat(targetObj.add);
+          for (k = 0, len3 = filteredTouches.length; k < len3; k++) {
+            filteredTouch = filteredTouches[k];
+            if (filteredTouch.target === filteredTouch.initialTarget) {
+              targetTouches.add(filteredTouch);
+            }
+          }
 
           // Create a generic event
           event = document.createEvent('Events');
-
-          // TODO: Conditional mousemove logic
           event.initEvent(eventType, mouseEvent.bubbles, mouseEvent.cancealable);
 
           // Generate TouchCollection keys as properties
@@ -515,8 +542,8 @@
           event.type = eventType;
 
           // Save different TouchList's
-          // TODO: Repair targetTouches with initial as spec'd
-          event.targetTouches = event.touches = touches;
+          event.touches = touches;
+          event.targetTouches = targetTouches;
           event.changedTouches = changedTouches;
 
           // Save the event to an array
@@ -665,6 +692,22 @@
         event = events[i];
         event.target.dispatchEvent(event.event);
       }
+
+      // Fluent interface
+      return this;
+    },
+    'hideCircles': function () {
+      this.eachTouch(function (touch) {
+        touch.hideCircle();
+      });
+
+      // Fluent interface
+      return this;
+    },
+    'showCircles': function () {
+      this.eachTouch(function (touch) {
+        touch.showCircle();
+      });
 
       // Fluent interface
       return this;
@@ -846,24 +889,27 @@
         elt.removeEventListener('mouseup', mouseUp, false);
       }
     }
+    
+    // Expose collection to the outside
+    this.collection = touchCollection;
   };
 
   // Overlay business
   var overlay = document.createElement('div'),
       overlayHidden = document.createElement('div'),
       overlayStyle = 'position: absolute; top: 20px; left: 0; background: linen; border: 1px solid purple; border-left: 0; padding: 5px; overflow: hidden;',
-      lastMocker;
+      mocker;
   overlay.id = 'MOCKTOUCHERoverlay';
   overlayHidden.id = 'MOCKTOUCHERoverlayHidden';
   overlay.setAttribute('style', overlayStyle);
   overlayHidden.setAttribute('style', overlayStyle + '; display: none; background: limegreen; color: purple; cursor: pointer; padding: 0; font-size: .5em;');
   overlay.innerHTML = ['<div style="text-align: center; color: purple;"><strong>Mock Toucher</strong> by <a href="http://twolfson.com/" target="_blank">Todd Wolfson</a></div>',
-    // '<div>&nbsp;</div>',
-    // '<div>',
-      // '<label for="MOCKTOUCHERshowCircles">Show circles: </label>',
-      // '<input type="checkbox" id="MOCKTOUCHERshowCircles" name="MOCKTOUCHERshowCircles" checked="checked"/>',
-    // '</div>',
-    // '<div>&nbsp;</div>',
+    '<div style="height: .5em">&nbsp;</div>',
+    '<div style="text-align: center">',
+      '<label for="MOCKTOUCHERshowCircles">Show circles: </label>',
+      '<input type="checkbox" id="MOCKTOUCHERshowCircles" name="MOCKTOUCHERshowCircles" checked="checked"/>',
+    '</div>',
+    '<div style="height: .5em">&nbsp;</div>',
     '<div style="text-align: center"><span id="MOCKTOUCHERhideText" style="color: red; text-decoration: underline; cursor: pointer;">Hide Panel</span></div>'].join('');
   overlayHidden.innerHTML = '&raquo;';
   // overlayHidden.innerHTML = '<div>M</div><div>O</div><div>C</div><div>K</div><div>&nbsp;</div><div>T</div><div>O</div><div>U</div><div>C</div><div>H</div><div>E</div><div>R</div>';
@@ -871,43 +917,25 @@
   document.body.appendChild(overlayHidden);
 
   // Bindings for overlay
-  var cssSelector = document.getElementById('MOCKTOUCHERcssSelector'),
-      // showCircles = document.getElementById('MOCKTOUCHERshowCircles'),
+  var showCircles = document.getElementById('MOCKTOUCHERshowCircles'),
       hideText = document.getElementById('MOCKTOUCHERhideText');
 
-  function ex(fn) {
-    fn();
-    return fn;
-  }
+  // Create a document-wide MockToucher
+  mocker = new MockToucher(document);
 
-  // When the CSS selector is changed
-  lastMocker = new MockToucher(document);
-  // cssSelector.onchange = ex(function () {
-    // // Get the query
-    // var query = cssSelector.value,
-        // elt;
-
-    // // Attempt to select the element
-    // try {
-      // elt = document.querySelector(query);
-    // } catch (e) {}
-
-    // // If there was a last MockToucher, delete it
-    // if (lastMocker) {
-      // lastMocker.delete();
-      // lastMocker = null;
-    // }
-
-    // // If a new element has been found
-    // if (elt) {
-      // // Create and save the new MockToucher for it
-      // lastMocker = new MockToucher(elt);
-    // }
-  // });
-
-  // // Show circles logic
-  // showCircles.onclick = function () {
-  // };
+  // Show circles logic
+  showCircles.onclick = function () {
+    // Switch the state of hide circles
+    hideCircles = !hideCircles;
+    
+    // If circles are hidden, Hide all circles
+    if (hideCircles) {
+      mocker.collection.hideCircles();
+    } else {
+    // Otherwise, show all circles
+      mocker.collection.showCircles();
+    }
+  };
 
   // Hide logic
   hideText.onclick = function () {
@@ -919,6 +947,3 @@
     overlayHidden.style.display = 'none';
   };
 }());
-
-// TODO: Mouse enter, leave, cancel
-// TODO: Selector panel should have checkbox for 'show circles' which adds display: none

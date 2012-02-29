@@ -50,9 +50,11 @@
 
     // Set up the mockToucherLink href
     mockToucherLink.setAttribute('href', mockToucherBookmarklet);
-    
-    // TODO: Remove from production
-    eval(mockToucherBookmarklet);
+
+    // If we are in a test environment, auto-fire the bookmarklet
+    if (location.hostname === 'localhost') {
+      eval(mockToucherBookmarklet);
+    }
 
     // Prevent multiple opens
     var openedBefore = false;
@@ -62,7 +64,7 @@
         // Stop it from happening again
         e.preventDefault();
         e.stopPropagation();
-        
+
         // Open the overlay (late binding due to async nature)
         var overlayHidden = document.getElementById('MOCKTOUCHERoverlayHidden');
         if (overlayHidden) {
