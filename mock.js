@@ -401,7 +401,7 @@
         // Target DNE, lastTarget D E, target !== lastTarget ->            / remove lastTarget
         // Target DNE, lastTarget DNE, target === lastTarget -> Not relevant
         // Target DNE, lastTarget DNE, target !== lastTarget -> Not possible
-        
+
         // There is no possibility for duplication within the arrays since touches are unique
 
         // If the touch has a target
@@ -443,10 +443,16 @@
           j,
           len2,
           eventFilter,
-          eventType;
+          targetTouches,
+          targetObj,
+          filteredTouches,
+          k,
+          len3;
 
-      // TODO: Change filterArr if we are looping through a mousemove
+      // TODO: Touchcancel (see how document.blur works)
+      // If the event is a touchmove
       if (eventType === 'touchmove') {
+        // Split up touch move into its proper parts
         eventFilterArr = [{
           'eventType': 'touchmove',
           'filter': function (changeObj) {
@@ -464,7 +470,6 @@
           }
         }];
       }
-      // TODO: Touchcancel (see how document.blur works)
 
       /* TouchEvent.changedTouches
           A TouchList of all the Touch objects representing individual points of contact
@@ -475,14 +480,24 @@
       /* TouchEvent.touches
           A TouchList of all the Touch  objects representing all current points of contact
           with the surface, regardless of target or changed status. Read only. */
+      // TODO: Ask MDN about what they mean about 'started on the same elements' for targetTouches. 'Currently on' would make a lot more sense.
+      // TODO: Switch over to .initialTarget tracking if MDN comes back with 'started on'.
 
       for (; i < len; i++) {
         target = targets[i];
-        
+
         // Go through each event
         for (j = 0, len2 = eventFilterArr.length; j < len2; j++) {
           eventFilter = eventFilterArr[j];
           eventType = eventFilter.eventType;
+          
+          // Create a targetTouches bassed on the filtered items
+          targetObj = targetMap.get(target);
+          filteredTouches = eventFilter.filter(targetObj);
+          targetTouches = new TouchList();
+          for (k = 0, len3 = filteredTouches.length; k < len3; k++) {
+            targetTouches.add(filteredTouches[k]);
+          }
 
           // Create a generic event
           event = document.createEvent('Events');
@@ -499,12 +514,11 @@
           // Define the event type as a property
           event.type = eventType;
 
-          // TODO: Ask MDN about what they mean about 'started on the same elements' for targetTouches. 'Currently on' would make a lot more sense.
-          // TODO: Switch over to .initialTarget tracking if MDN comes back with 'started on'.
           // Since any action affects all clicks, assume that changedTouches = touches
           // TODO: If there is the ability for a touch to become fixed, start updating these
           // Should be a comparison of the old touch location vs new touch location (this will require semantic repair of .getLastLocation to .getRestoreLocation)
-          event.changedTouches = event.targetTouches = event.touches = touches;
+          event.changedTouches = event.touches = touches;
+          event.targetTouches = targetTouches;
 
           // Save the event to an array
           targetEventArr.push({'target': target, 'event': event});
