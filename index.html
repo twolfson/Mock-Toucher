@@ -1,0 +1,205 @@
+<!doctype html>
+<html>
+<head>
+  <title>Mock Toucher Demo Page</title>
+  <style>
+    /* Page styling */
+    body {
+      background: linen;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+    }
+
+    canvas {
+      background: white;
+      border: 1px solid black;
+    }
+  </style>
+</head>
+<body>
+  <h1>
+    Mock Toucher Demo Page
+  </h1>
+  <p>
+    This page is a demonstration of the Mock Toucher bookmarklet. Below is a canvas that supports multi touch input but was not built to support mouse events.
+    <br/>
+    Using the Mock Toucher bookmarklet, mouse events are double fired as touch events on the selected element.
+    <br/>
+    Touches can be created by holding the <u>Shift</u> key and clicking where additional touch points should go. Similarly, touches can be removed via the <u>Ctrl</u> key and clicking on the touch point to remove.
+    <br/>
+    To begin Mock Toucher, click the link below. Feel free to bookmark it as well as it as a bookmarklet.
+    <h3><a id="mockToucherLink" href="">Mock Toucher</a></h3>
+  </p>
+  <script>
+    function basePath(url) {
+      var slashIndex;
+      if (url.charAt(url.length - 1) === '/') {
+        return url;
+      } else {
+        return url.slice(0, url.indexOf('/'));
+      }
+    }
+
+    // Get mock toucher location
+    var mockSrc = basePath(location + '').replace(/http(s)?:/i, '') + 'mock.js',
+        mockToucherLink = document.getElementById('mockToucherLink'),
+        mockToucherBookmarklet = 'javascript:(function(){var d=document,s=d.createElement("script"),t=document.getElementsByTagName("script")[0];s.async=true,s.src="' + mockSrc + '";t.parentNode.insertBefore(s,t);}());void 0;';
+
+    // Set up the mockToucherLink href
+    mockToucherLink.setAttribute('href', mockToucherBookmarklet);
+
+    // If we are in a test environment, auto-fire the bookmarklet
+    if (location.hostname === 'localhost') {
+      eval(mockToucherBookmarklet);
+    }
+
+    // Prevent multiple opens
+    var openedBefore = false;
+    mockToucherLink.onclick = function (e) {
+      // If the link has been opened before
+      if (openedBefore === true) {
+        // Stop it from happening again
+        e.preventDefault();
+        e.stopPropagation();
+
+        // Open the overlay (late binding due to async nature)
+        var overlayHidden = document.getElementById('MOCKTOUCHERoverlayHidden');
+        if (overlayHidden) {
+          overlayHidden.onclick();
+        }
+        return;
+      }
+
+      // Save openedBefore state
+      openedBefore = true;
+    };
+  </script>
+  <canvas width="922" height="450" id="example"></canvas>
+  <script>
+    // Comments and code taken from http://paulirish.com/demo/multi
+    // Repurposed by Todd Wolfson to remove jQuery dependancy
+
+    // canvasDrawr originally from Mike Taylr  http://miketaylr.com/
+    // Tim Branyen massaged it: http://timbranyen.com/
+    // and i did too. with multi touch.
+    // and boris fixed some touch identifier stuff to be more specific.
+
+    (function () {
+    var CanvasDrawr = function(options) {
+        // grab canvas element
+        var canvas = document.getElementById(options.id),
+            ctxt = canvas.getContext("2d");
+
+        canvas.style.width = '100%'
+        canvas.width = canvas.offsetWidth;
+        canvas.style.width = '';
+
+        // set props from options, but the defaults are for the cool kids
+        ctxt.lineWidth = options.size || Math.ceil(Math.random() * 35);
+        ctxt.lineCap = options.lineCap || "round";
+        ctxt.pX = undefined;
+        ctxt.pY = undefined;
+
+        var lines = [,,];
+        var offset = (function () {
+          // Get the offsets of canvas itself
+          var offTop = canvas.offsetTop || 0,
+              offLeft = canvas.offsetLeft || 0,
+              offParent = canvas;
+
+          while (true) {
+            // Get the offsetParent of the current offsetParent
+            offParent = offParent.offsetParent;
+
+            // If there is no parent, stop looping
+            if (!offParent) { break; }
+
+            // Add the offsetTop and offsetLeft to the running totals
+            offTop += offParent.offsetTop;
+            offLeft += offParent.offsetLeft;
+          }
+
+          // Return the offsets
+          return {'top': offTop, 'left': offLeft};
+        }());
+
+        var self = {
+            //bind click events
+            init: function() {
+              //set pX and pY from first click
+              canvas.addEventListener('touchstart', self.preDraw, false);
+              canvas.addEventListener('touchmove', self.draw, false);
+            },
+
+            preDraw: function(event) {
+              var touches = event.touches || [],
+                  touch,
+                  i = 0,
+                  len = touches.length;
+              for (; i < len; i++) {
+                touch = touches[i];
+                (function (i, touch) {
+                  var id = touch.identifier;
+                  lines[id] = { x     : touch.pageX - offset.left,
+                    y     : touch.pageY - offset.top,
+                    color : options.color || ["red", "green", "yellow", "blue", "magenta", "orangered"][(Math.random() * 6)|0]
+                  };
+                }(i, touch));
+              }
+              event.preventDefault();
+            },
+
+            draw: function(event) {
+              var e = event,
+                  hmm = {},
+                  touches = event.touches || [],
+                  touch,
+                  i = 0,
+                  len = touches.length;
+              for (; i < len; i++) {
+                touch = touches[i];
+                (function (i, touch) {
+                  var id = touch.identifier,
+                      moveX = touch.pageX - offset.left - lines[id].x,
+                      moveY = touch.pageY - offset.top - lines[id].y;
+
+                  var ret = self.move(id, moveX, moveY);
+                  lines[id].x = ret.x;
+                  lines[id].y = ret.y;
+                }(i, touch));
+              }
+
+              event.preventDefault();
+            },
+
+            move: function(i, changeX, changeY) {
+              ctxt.strokeStyle = lines[i].color;
+              ctxt.beginPath();
+              ctxt.moveTo(lines[i].x, lines[i].y);
+
+              ctxt.lineTo(lines[i].x + changeX, lines[i].y + changeY);
+              ctxt.stroke();
+              ctxt.closePath();
+
+              return { x: lines[i].x + changeX, y: lines[i].y + changeY };
+            }
+        };
+
+        return self.init();
+    };
+
+    var super_awesome_multitouch_drawing_canvas_thingy = new CanvasDrawr({id:"example", size: 5 });
+    }());
+  </script>
+  <p>
+    Inspired by Remy Sharp's Remote Tilt <a href="http://remote-tilt.com/">http://remote-tilt.com/</a>
+    <br/>
+    Attribution to <a href="http://tbranyen.com/">Tim Branyen</a>, <a href="http://miketaylr.com">Mike Taylr</a>,  <a href="http://paulirish.com/">Paul Irish</a> &amp; <a href="//smus.com">Boris Smus</a> for multitouch canvas.
+    <br/>
+    <a href="http://paulirish.com/demo/multi">http://paulirish.com/demo/multi</a>
+  </p>
+</body>
+</html>
