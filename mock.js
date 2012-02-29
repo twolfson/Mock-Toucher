@@ -356,25 +356,10 @@
         touch.moveRel(diffX, diffY);
       });
 
-      // TODO: Touchstart (any)
-      // TODO: Touchmove (any) / enter (old->new) / leave(new->old) logic
-      // TODO: Touchend (any) / Touchcancel (see how document.blur works)
-
-      /* TouchEvent.changedTouches
-          A TouchList of all the Touch objects representing individual points of contact
-          whose states changed between the previous touch event and this one. Read only. */
-      /* TouchEvent.targetTouches
-          A TouchList of all the Touch  objects that are both currently in contact with the touch surface
-          and were also started on the same element that is the target of the event. Read only. */
-      /* TouchEvent.touches
-          A TouchList of all the Touch  objects representing all current points of contact
-          with the surface, regardless of target or changed status. Read only. */
-
       // Generate a TouchList of all touches
       var touches = new TouchList();
       this.eachTouch(function (touch) { touches.add(touch); });
 
-      // TODO: Remove Set
       // TODO: Create own WeakMap
       // Generate a weak map for all targets and collection of all targets
       var targetMap = new WeakMap(),
@@ -404,24 +389,41 @@
         // Get the last target, current target, and if it has changed
         var lastTarget = touch.lastTarget,
             target = touch.target,
-            thereWasALastTarget = !!lastTarget,
-            targetHasChanged = target !== lastTarget;
+            thereIsATarget = !!target;
+            thereWasALastTarget = !!lastTarget;
+
+        // D E = Does not exist, DNE = does not exist
+        // Target D E, lastTarget D E, target === lastTarget ->       same / target
+        // Target D E, lastTarget D E, target !== lastTarget -> add target / remove lastTarget
+        // Target D E, lastTarget DNE, target === lastTarget -> Not possible
+        // Target D E, lastTarget DNE, target !== lastTarget -> add target
+        // Target DNE, lastTarget D E, target === lastTarget -> Not possible
+        // Target DNE, lastTarget D E, target !== lastTarget ->            / remove lastTarget
+        // Target DNE, lastTarget DNE, target === lastTarget -> Not relevant
+        // Target DNE, lastTarget DNE, target !== lastTarget -> Not possible
+        
+        // There is no possibility for duplication within the arrays since touches are unique
 
         // If the touch has a target
-        if (target) {
-          // If there was not a last target or the target has changed
-          if (!thereWasALastTarget || targetHasChanged) {
-            // Add the touch to the rem array of the lastTarget
-            if (thereWasALastTarget) {
+        if (thereIsATarget) {
+          // If the touch had a last target
+          if (thereWasALastTarget) {
+            // If the target is the same, add to the same array
+            if (target === lastTarget) {
+              targetMap.get(target).same.push(touch);
+            } else {
+            // Otherwise, add to add and remove arrays respectively
+              targetMap.get(target).add.push(touch);
               targetMap.get(lastTarget).rem.push(touch);
             }
-
-            // and add the touch to the add array of the new target
-            targetMap.get(target).add.push(touch);
           } else {
-          // Otherwise, add the touch to the same array of the target
-            targetMap.get(target).same.push(touch);
+          // Otherwise, add the target to the add array
+            targetMap.get(target).add.push(touch);
           }
+        } else if (thereWasALastTarget) {
+        // Otherwise, if the touch had a last target
+          // Add the touch to the rem array of the lastTarget
+          targetMap.get(lastTarget).rem.push(touch);
         }
       });
 
@@ -432,37 +434,63 @@
           len = targets.length,
           target,
           event,
-          targetEventArr = [];
+          targetEventArr = [],
+      // By default, don't do any filtering (e.g. touchstart, touchend)
+          eventFilterArr = [{'eventType': eventType, 'filter': function (changeObj) {
+            var retArr = [].concat(changeObj.add).concat(changeObj.same).concat(changeObj.rem);
+            return retArr;
+          }}],
+          j,
+          len2,
+          eventFilter,
+          eventType;
+
+      // TODO: Change filterArr if we are looping through a mousemove
+      // TODO: Touchstart (any)
+      // TODO: Touchmove (any) / enter (old->new) / leave(new->old) logic
+      // TODO: Touchend (any) / Touchcancel (see how document.blur works)
+
+      /* TouchEvent.changedTouches
+          A TouchList of all the Touch objects representing individual points of contact
+          whose states changed between the previous touch event and this one. Read only. */
+      /* TouchEvent.targetTouches
+          A TouchList of all the Touch  objects that are both currently in contact with the touch surface
+          and were also started on the same element that is the target of the event. Read only. */
+      /* TouchEvent.touches
+          A TouchList of all the Touch  objects representing all current points of contact
+          with the surface, regardless of target or changed status. Read only. */
+
       for (; i < len; i++) {
         target = targets[i];
+        
+        // Go through each event
+        for (j = 0, len2 = eventFilterArr.length; j < len2; j++) {
+          eventFilter = eventFilterArr[j];
+          eventType = eventFilter.eventType;
 
-        // Create a generic event
-        event = document.createEvent('Events');
+          // Create a generic event
+          event = document.createEvent('Events');
 
-        // TODO: Conditional mousemove logic
-        event.initEvent(eventType, mouseEvent.bubbles, mouseEvent.cancealable);
+          // TODO: Conditional mousemove logic
+          event.initEvent(eventType, mouseEvent.bubbles, mouseEvent.cancealable);
 
-        // Generate TouchCollection keys as properties
-        event.altKey = mouseEvent.altKey;
-        event.ctrlKey = mouseEvent.ctrlKey;
-        event.shiftKey = mouseEvent.shiftKey;
-        event.metaKey = mouseEvent.metaKey;
+          // Generate TouchCollection keys as properties
+          event.altKey = mouseEvent.altKey;
+          event.ctrlKey = mouseEvent.ctrlKey;
+          event.shiftKey = mouseEvent.shiftKey;
+          event.metaKey = mouseEvent.metaKey;
 
-        // Define the event type as a property
-        event.type = eventType;
+          // Define the event type as a property
+          event.type = eventType;
 
-        // All events get the same touches
-        event.touches = touches;
+          // Since any action affects all clicks, assume that changedTouches = touches
+          // TODO: If there is the ability for a touch to become fixed, start updating these
+          // Should be a comparison of the old touch location vs new touch location (this will require semantic repair of .getLastLocation to .getRestoreLocation)
+          event.changedTouches = event.targetTouches = event.touches = touches;
 
-        // TODO: Create TouchList of 'add', 'same'
-
-        // Due to the nature of one click, we will have these all be equal for now
-        // TODO: If there is the ability for a touch to become fixed, start updating these
-        // Should be a comparison of the old touch location vs new touch location
-        event.changedTouches = event.targetTouches = event.touches = touches;
-
-        // Save the event to an array
-        targetEventArr.push({'target': target, 'event': event});
+          // Save the event to an array
+          targetEventArr.push({'target': target, 'event': event});
+        }
       }
 
       // Save the events for dispatching
