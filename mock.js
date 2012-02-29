@@ -46,7 +46,7 @@
       delete this.circle;
     },
     'moveToLastPosition': function () {
-      this.moveTo(this.lastPositionX, this.lastPositionY);
+      this.moveTo(this.lastPositionX + this.halfHeight, this.lastPositionY + this.halfWidth);
     },
     'addEventListener': function () {
       var args = [].slice.call(arguments),
