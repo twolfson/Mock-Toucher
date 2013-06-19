@@ -1,4 +1,4 @@
-Mock Toucher
+Mock Toucher [![Donate on Gittip](http://badgr.co/gittip/twolfson.png)](https://www.gittip.com/twolfson/)
 ============
 A TouchEvent testing tool for non-mobile devices. The script is a bookmarklet which fires touch events on elements based on mouse clicks and movements. It additionally supports multiplexing a mouse via <u>shift</u> which allows the user to add additional mouse points. These points can also be removed via <u>ctrl</u>. Unfortunately, browser supports is very limited and has only been tested in Firefox 10.
 
